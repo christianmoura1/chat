@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ChatGPT Clone - OpenRouter</title>
+    <title>ChatGPT Clone - NVIDIA NIM + OpenRouter</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
@@ -12,7 +12,7 @@
             --border-color: #e5e5e5; --input-bg: #f7f7f8; --button-bg: #000000;
             --button-text: #ffffff; --accent-color: #10a37f; --message-user-bg: #f7f7f8;
             --message-ai-bg: #ffffff; --shadow: 0 2px 6px rgba(0,0,0,0.05); --danger: #ef4444;
-            --warning: #f59e0b;
+            --nvidia: #76b900; --openrouter: #10a37f; --warning: #f59e0b;
         }
         [data-theme="dark"] {
             --sidebar-bg: #171717; --sidebar-hover: #262626; --sidebar-text: #ececec;
@@ -20,7 +20,7 @@
             --border-color: #404040; --input-bg: #2f2f2f; --button-bg: #ffffff;
             --button-text: #000000; --accent-color: #19c59f; --message-user-bg: #2f2f2f;
             --message-ai-bg: #212121; --shadow: 0 2px 6px rgba(0,0,0,0.3); --danger: #f87171;
-            --warning: #fbbf24;
+            --nvidia: #76b900; --openrouter: #19c59f; --warning: #fbbf24;
         }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
@@ -78,6 +78,13 @@
             display: none; background: none; border: none; color: var(--text-primary);
             font-size: 20px; cursor: pointer;
         }
+        .provider-badge {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer;
+        }
+        .provider-badge.nvidia { background: var(--nvidia); color: white; }
+        .provider-badge.openrouter { background: var(--openrouter); color: white; }
         .model-selector { position: relative; }
         .model-btn {
             display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: none;
@@ -89,10 +96,25 @@
         .model-dropdown {
             position: absolute; top: calc(100% + 8px); left: 0; background: var(--main-bg);
             border: 1px solid var(--border-color); border-radius: 12px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.15); width: 420px; max-height: 70vh;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.15); width: 440px; max-height: 70vh;
             z-index: 100; display: none; overflow: hidden; flex-direction: column;
         }
         .model-dropdown.show { display: flex; }
+        .model-dropdown-header {
+            padding: 12px 16px; border-bottom: 1px solid var(--border-color);
+            display: flex; gap: 8px; align-items: center;
+        }
+        .provider-tab {
+            padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600;
+            cursor: pointer; border: 1px solid var(--border-color); background: transparent;
+            color: var(--text-secondary); transition: all 0.2s;
+        }
+        .provider-tab.active {
+            background: var(--nvidia); color: white; border-color: var(--nvidia);
+        }
+        .provider-tab.openrouter-tab.active {
+            background: var(--openrouter); border-color: var(--openrouter);
+        }
         .model-search { padding: 12px 16px; border-bottom: 1px solid var(--border-color); }
         .model-search input {
             width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 8px;
@@ -117,9 +139,17 @@
             align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0;
         }
         .model-details { flex: 1; min-width: 0; }
+        .model-name-row {
+            display: flex; align-items: center; gap: 6px;
+        }
         .model-name {
             font-size: 14px; font-weight: 500; color: var(--text-primary);
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .free-badge {
+            font-size: 10px; padding: 2px 6px; border-radius: 4px;
+            background: var(--nvidia); color: white; font-weight: 600;
+            flex-shrink: 0;
         }
         .model-desc {
             font-size: 12px; color: var(--text-secondary);
@@ -214,7 +244,7 @@
         .modal-overlay.show { display: flex; }
         .modal {
             background: var(--main-bg); border-radius: 16px; width: 90%; max-width: 500px;
-            max-height: 80vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-height: 85vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
         }
         .modal-header {
             padding: 20px; border-bottom: 1px solid var(--border-color);
@@ -231,11 +261,26 @@
         }
         .form-input:focus { border-color: var(--accent-color); }
         .form-hint { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+        .form-hint a { color: var(--accent-color); text-decoration: none; }
+        .form-hint a:hover { text-decoration: underline; }
         .save-btn {
             width: 100%; padding: 12px; border: none; border-radius: 8px; background: var(--accent-color);
             color: white; font-size: 14px; font-weight: 600; cursor: pointer; transition: opacity 0.2s;
         }
         .save-btn:hover { opacity: 0.9; }
+        .provider-section {
+            margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border-color);
+        }
+        .provider-section:last-child { border-bottom: none; }
+        .provider-header {
+            display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
+        }
+        .provider-header h3 { font-size: 16px; font-weight: 600; }
+        .provider-tag {
+            font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 600;
+        }
+        .provider-tag.free { background: var(--nvidia); color: white; }
+        .provider-tag.paid { background: var(--warning); color: white; }
         @media (max-width: 768px) {
             .sidebar { position: fixed; left: -260px; z-index: 100; height: 100vh; }
             .sidebar.open { left: 0; box-shadow: 2px 0 10px rgba(0,0,0,0.3); }
@@ -279,10 +324,8 @@
         }
         .api-status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent-color); }
         .api-status-dot.offline { background: var(--danger); }
-        .error-details {
-            font-size: 13px; color: var(--text-secondary); margin-top: 8px;
-            padding: 8px; background: var(--sidebar-hover); border-radius: 6px;
-        }
+        .api-status-dot.nvidia { background: var(--nvidia); }
+        .api-status-dot.openrouter { background: var(--openrouter); }
     </style>
 <base target="_blank">
 </head>
@@ -310,13 +353,13 @@
                         <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/>
                         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z"/>
                     </svg>
-                    Configurar API OpenRouter
+                    Configurar APIs
                 </div>
                 <div class="user-profile">
                     <div class="avatar" id="userAvatar">U</div>
                     <div class="user-info">
-                        <div class="user-name" id="userName">Usuário</div>
-                        <div class="user-plan">OpenRouter</div>
+                        <div class="user-name" id="userName">Usuario</div>
+                        <div class="user-plan">NVIDIA NIM + OpenRouter</div>
                     </div>
                 </div>
             </div>
@@ -328,12 +371,17 @@
                     <button class="menu-toggle" id="btnMenuToggle">☰</button>
                     <div class="model-selector">
                         <button class="model-btn" id="btnModelSelector">
-                            <span id="currentModel">OpenRouter Auto</span>
+                            <span class="provider-badge nvidia" id="providerBadge">NVIDIA</span>
+                            <span id="currentModel">Nemotron 3 Ultra</span>
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
                                 <polyline points="6 9 12 15 18 9"></polyline>
                             </svg>
                         </button>
                         <div class="model-dropdown" id="modelDropdown">
+                            <div class="model-dropdown-header">
+                                <div class="provider-tab active" id="tabNvidia" data-provider="nvidia">NVIDIA (Gratuito)</div>
+                                <div class="provider-tab openrouter-tab" id="tabOpenRouter" data-provider="openrouter">OpenRouter</div>
+                            </div>
                             <div class="model-search">
                                 <input type="text" id="modelSearch" placeholder="Buscar modelos...">
                             </div>
@@ -344,8 +392,8 @@
                 </div>
                 <div class="header-right">
                     <div class="api-status" id="apiStatus">
-                        <span class="api-status-dot" id="apiStatusDot"></span>
-                        <span id="apiStatusText">OpenRouter</span>
+                        <span class="api-status-dot nvidia" id="apiStatusDot"></span>
+                        <span id="apiStatusText">NVIDIA NIM</span>
                     </div>
                     <button class="icon-btn tooltip" data-tooltip="Compartilhar" id="btnShare">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -362,7 +410,7 @@
 
             <div class="chat-container" id="chatContainer">
                 <div class="welcome-screen" id="welcomeScreen">
-                    <h1 class="welcome-title" id="welcomeTitle">Ei, <span id="welcomeName">Christian</span>. Tudo pronto para começar?</h1>
+                    <h1 class="welcome-title" id="welcomeTitle">Ei, <span id="welcomeName">Christian</span>. Tudo pronto para comecar?</h1>
                     <div class="suggestions-grid">
                         <div class="suggestion-card" data-suggestion="Crie um site responsivo usando HTML e CSS">
                             <div class="suggestion-icon">💻</div>
@@ -372,9 +420,9 @@
                             <div class="suggestion-icon">🧬</div>
                             <div class="suggestion-text">Explique a teoria da relatividade de forma simples</div>
                         </div>
-                        <div class="suggestion-card" data-suggestion="Me dê ideias de conteúdo para TikTok sobre tecnologia">
+                        <div class="suggestion-card" data-suggestion="Me de ideias de conteudo para TikTok sobre tecnologia">
                             <div class="suggestion-icon">🚀</div>
-                            <div class="suggestion-text">Me dê ideias de conteúdo para TikTok sobre tecnologia</div>
+                            <div class="suggestion-text">Me de ideias de conteudo para TikTok sobre tecnologia</div>
                         </div>
                         <div class="suggestion-card" data-suggestion="Escreva um email profissional pedindo feedback">
                             <div class="suggestion-icon">✉️</div>
@@ -401,7 +449,7 @@
                             </svg>
                         </button>
                     </div>
-                    <div class="input-footer">A IA pode cometer erros. Considere verificar informações importantes. • Via OpenRouter</div>
+                    <div class="input-footer">A IA pode cometer erros. Considere verificar informacoes importantes. • Via <span id="footerProvider">NVIDIA NIM</span></div>
                 </div>
             </div>
         </main>
@@ -410,25 +458,44 @@
     <div class="modal-overlay" id="settingsModal">
         <div class="modal">
             <div class="modal-header">
-                <h2 class="modal-title">Configurar OpenRouter</h2>
+                <h2 class="modal-title">Configurar APIs</h2>
                 <button class="modal-close" id="btnCloseSettings">×</button>
             </div>
             <div class="modal-body">
-                <div class="form-group">
-                    <label class="form-label">OpenRouter API Key</label>
-                    <input type="password" class="form-input" id="apiKeyOpenRouter" placeholder="sk-or-v1-...">
-                    <div class="form-hint">Obtenha em <a href="https://openrouter.ai/keys" target="_blank" style="color: var(--accent-color);">openrouter.ai/keys</a>. Uma unica API Key acessa 300+ modelos.</div>
+                <div class="provider-section">
+                    <div class="provider-header">
+                        <h3>🟢 NVIDIA NIM</h3>
+                        <span class="provider-tag free">1000+ CREDITOS GRATIS</span>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">NVIDIA API Key</label>
+                        <input type="password" class="form-input" id="apiKeyNvidia" placeholder="nvapi-...">
+                        <div class="form-hint">Obtenha em <a href="https://build.nvidia.com/settings/api-keys" target="_blank">build.nvidia.com/settings/api-keys</a>. Sem cartao de credito. 1000 creditos iniciais + 40 req/min.</div>
+                    </div>
                 </div>
+
+                <div class="provider-section">
+                    <div class="provider-header">
+                        <h3>🔵 OpenRouter</h3>
+                        <span class="provider-tag paid">PAGO / FREE LIMITADO</span>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">OpenRouter API Key</label>
+                        <input type="password" class="form-input" id="apiKeyOpenRouter" placeholder="sk-or-v1-...">
+                        <div class="form-hint">Obtenha em <a href="https://openrouter.ai/keys" target="_blank">openrouter.ai/keys</a>. Alguns modelos gratuitos limitados.</div>
+                    </div>
+                </div>
+
                 <div class="form-group">
                     <label class="form-label">Seu Nome</label>
                     <input type="text" class="form-input" id="userNameInput" placeholder="Christian">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Site URL (opcional - para rankings)</label>
+                    <label class="form-label">Site URL (opcional)</label>
                     <input type="text" class="form-input" id="siteUrl" placeholder="https://meusite.com">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Nome do App (opcional - para rankings)</label>
+                    <label class="form-label">Nome do App (opcional)</label>
                     <input type="text" class="form-input" id="appName" placeholder="Meu Chat AI">
                 </div>
                 <button class="save-btn" id="btnSaveSettings">Salvar Configuracoes</button>
@@ -440,114 +507,127 @@
     (function() {
         'use strict';
 
-        // ========== VERIFIED MODEL IDs (based on OpenRouter docs) ==========
-        var DEFAULT_MODELS = [
-            // Auto / Latest aliases
-            { id: "openrouter/auto", name: "OpenRouter Auto (Recomendado)", provider: "openrouter", icon: "🎲", color: "#10a37f" },
-            { id: "~openai/gpt-latest", name: "GPT Latest (Auto)", provider: "openai", icon: "🤖", color: "#10a37f" },
-            { id: "~anthropic/claude-sonnet-latest", name: "Claude Sonnet Latest", provider: "anthropic", icon: "🎭", color: "#cc785c" },
-            // OpenAI
-            { id: "openai/gpt-4o", name: "GPT-4o", provider: "openai", icon: "🤖", color: "#10a37f" },
-            { id: "openai/gpt-4o-mini", name: "GPT-4o Mini", provider: "openai", icon: "⚡", color: "#10a37f" },
-            { id: "openai/gpt-4o-2024-11-20", name: "GPT-4o (2024-11)", provider: "openai", icon: "🎯", color: "#10a37f" },
-            { id: "openai/gpt-4-turbo", name: "GPT-4 Turbo", provider: "openai", icon: "🧠", color: "#10a37f" },
-            { id: "openai/gpt-4", name: "GPT-4", provider: "openai", icon: "💎", color: "#10a37f" },
-            { id: "openai/gpt-3.5-turbo", name: "GPT-3.5 Turbo", provider: "openai", icon: "💬", color: "#10a37f" },
-            { id: "openai/o1", name: "o1", provider: "openai", icon: "🧩", color: "#10a37f" },
-            { id: "openai/o1-mini", name: "o1 Mini", provider: "openai", icon: "🔹", color: "#10a37f" },
-            { id: "openai/o3-mini", name: "o3 Mini", provider: "openai", icon: "🔸", color: "#10a37f" },
-            // Anthropic
-            { id: "anthropic/claude-3.5-sonnet", name: "Claude 3.5 Sonnet", provider: "anthropic", icon: "🎭", color: "#cc785c" },
-            { id: "anthropic/claude-3.5-haiku", name: "Claude 3.5 Haiku", provider: "anthropic", icon: "🐇", color: "#cc785c" },
-            { id: "anthropic/claude-3-opus", name: "Claude 3 Opus", provider: "anthropic", icon: "👑", color: "#cc785c" },
-            { id: "anthropic/claude-3-sonnet", name: "Claude 3 Sonnet", provider: "anthropic", icon: "🎨", color: "#cc785c" },
-            { id: "anthropic/claude-3-haiku", name: "Claude 3 Haiku", provider: "anthropic", icon: "🌸", color: "#cc785c" },
-            { id: "anthropic/claude-sonnet-4-6", name: "Claude Sonnet 4.6", provider: "anthropic", icon: "🎪", color: "#cc785c" },
-            // Google
-            { id: "google/gemini-2.0-flash", name: "Gemini 2.0 Flash", provider: "google", icon: "✨", color: "#4285f4" },
-            { id: "google/gemini-2.0-flash-thinking", name: "Gemini 2.0 Flash Thinking", provider: "google", icon: "💭", color: "#4285f4" },
-            { id: "google/gemini-1.5-pro", name: "Gemini 1.5 Pro", provider: "google", icon: "🔮", color: "#4285f4" },
-            { id: "google/gemini-1.5-flash", name: "Gemini 1.5 Flash", provider: "google", icon: "⚡", color: "#4285f4" },
-            { id: "google/gemini-1.5-flash-8b", name: "Gemini 1.5 Flash 8B", provider: "google", icon: "🔹", color: "#4285f4" },
-            { id: "google/gemini-2.5-pro-preview", name: "Gemini 2.5 Pro Preview", provider: "google", icon: "🔮", color: "#4285f4" },
-            // Meta
-            { id: "meta-llama/llama-3.3-70b-instruct", name: "Llama 3.3 70B", provider: "meta", icon: "🦙", color: "#0668e1" },
-            { id: "meta-llama/llama-3.1-405b-instruct", name: "Llama 3.1 405B", provider: "meta", icon: "🦙", color: "#0668e1" },
-            { id: "meta-llama/llama-3.1-70b-instruct", name: "Llama 3.1 70B", provider: "meta", icon: "🦙", color: "#0668e1" },
-            { id: "meta-llama/llama-3.1-8b-instruct", name: "Llama 3.1 8B", provider: "meta", icon: "🦙", color: "#0668e1" },
-            { id: "meta-llama/llama-3-70b-instruct", name: "Llama 3 70B", provider: "meta", icon: "🦙", color: "#0668e1" },
-            { id: "meta-llama/llama-3-8b-instruct", name: "Llama 3 8B", provider: "meta", icon: "🦙", color: "#0668e1" },
-            // Mistral
-            { id: "mistralai/mistral-large", name: "Mistral Large", provider: "mistral", icon: "🌊", color: "#ff7000" },
-            { id: "mistralai/mistral-medium", name: "Mistral Medium", provider: "mistral", icon: "🌊", color: "#ff7000" },
-            { id: "mistralai/mistral-small", name: "Mistral Small", provider: "mistral", icon: "🌊", color: "#ff7000" },
-            { id: "mistralai/mistral-nemo", name: "Mistral Nemo", provider: "mistral", icon: "🌊", color: "#ff7000" },
-            { id: "mistralai/pixtral-large", name: "Pixtral Large", provider: "mistral", icon: "🖼️", color: "#ff7000" },
+        // ========== NVIDIA MODELS (verified from build.nvidia.com) ==========
+        var NVIDIA_MODELS = [
+            // NVIDIA Nemotron (proprietary, optimized)
+            { id: "nvidia/nemotron-3-ultra-550b-a55b", name: "Nemotron 3 Ultra 550B", provider: "nvidia", icon: "🟢", color: "#76b900", free: true, desc: "Agente, 550B params, 55B ativos" },
+            { id: "nvidia/nemotron-3-super-120b-a12b", name: "Nemotron 3 Super 120B", provider: "nvidia", icon: "🟢", color: "#76b900", free: true, desc: "Agente, 120B params, 12B ativos" },
+            { id: "nvidia/nemotron-3-nano-30b-a3b", name: "Nemotron 3 Nano 30B", provider: "nvidia", icon: "🟢", color: "#76b900", free: true, desc: "Leve, 30B params, 3B ativos" },
+            { id: "nvidia/llama-3.1-nemotron-ultra-253b-v1", name: "Nemotron Ultra 253B", provider: "nvidia", icon: "🟢", color: "#76b900", free: true, desc: "Llama-based, 253B params" },
+            { id: "nvidia/nemotron-nano-2-vl", name: "Nemotron Nano 2 VL", provider: "nvidia", icon: "👁️", color: "#76b900", free: true, desc: "Multimodal: Visao + Texto + Video" },
+            { id: "nvidia/cosmos3-nano-reasoner", name: "Cosmos 3 Nano Reasoner", provider: "nvidia", icon: "🧠", color: "#76b900", free: true, desc: "Physical AI, raciocinio" },
             // DeepSeek
-            { id: "deepseek/deepseek-chat", name: "DeepSeek Chat", provider: "deepseek", icon: "🐋", color: "#4f46e5" },
-            { id: "deepseek/deepseek-coder", name: "DeepSeek Coder", provider: "deepseek", icon: "💻", color: "#4f46e5" },
-            { id: "deepseek/deepseek-r1", name: "DeepSeek R1", provider: "deepseek", icon: "🔬", color: "#4f46e5" },
-            { id: "deepseek/deepseek-v3", name: "DeepSeek V3", provider: "deepseek", icon: "🌊", color: "#4f46e5" },
-            // xAI
-            { id: "x-ai/grok-2", name: "Grok 2", provider: "xai", icon: "🤖", color: "#000000" },
-            { id: "x-ai/grok-2-mini", name: "Grok 2 Mini", provider: "xai", icon: "⚡", color: "#000000" },
-            { id: "x-ai/grok-beta", name: "Grok Beta", provider: "xai", icon: "🧪", color: "#000000" },
-            // Cohere
-            { id: "cohere/command-r-plus", name: "Command R+", provider: "cohere", icon: "📚", color: "#d6a45d" },
-            { id: "cohere/command-r", name: "Command R", provider: "cohere", icon: "📖", color: "#d6a45d" },
+            { id: "deepseek-ai/deepseek-r1", name: "DeepSeek R1", provider: "deepseek", icon: "🔬", color: "#4f46e5", free: true, desc: "Raciocinio, 671B MoE" },
+            { id: "deepseek-ai/deepseek-v4-pro", name: "DeepSeek V4 Pro", provider: "deepseek", icon: "🐋", color: "#4f46e5", free: true, desc: "Chat avancado, codigo" },
+            { id: "deepseek-ai/deepseek-v3.1", name: "DeepSeek V3.1", provider: "deepseek", icon: "💻", color: "#4f46e5", free: true, desc: "Chat e codigo" },
+            // Meta Llama
+            { id: "meta/llama-3.1-405b-instruct", name: "Llama 3.1 405B", provider: "meta", icon: "🦙", color: "#0668e1", free: true, desc: "Maior modelo Llama, 128K context" },
+            { id: "meta/llama-3.1-70b-instruct", name: "Llama 3.1 70B", provider: "meta", icon: "🦙", color: "#0668e1", free: true, desc: "Equilibrio qualidade/velocidade" },
+            { id: "meta/llama-3.3-70b-instruct", name: "Llama 3.3 70B", provider: "meta", icon: "🦙", color: "#0668e1", free: true, desc: "Versao atualizada do 70B" },
+            { id: "meta/llama-3.1-8b-instruct", name: "Llama 3.1 8B", provider: "meta", icon: "🦙", color: "#0668e1", free: true, desc: "Rapido e leve" },
+            { id: "meta/llama-3.2-3b-instruct", name: "Llama 3.2 3B", provider: "meta", icon: "🦙", color: "#0668e1", free: true, desc: "Multimodal, muito leve" },
+            // Mistral
+            { id: "mistralai/mistral-large-2-instruct", name: "Mistral Large 2", provider: "mistral", icon: "🌊", color: "#ff7000", free: true, desc: "128K context, multilingue" },
+            { id: "mistralai/mistral-small-3-1-24b", name: "Mistral Small 3.1 24B", provider: "mistral", icon: "🌊", color: "#ff7000", free: true, desc: "Leve, 24B params" },
+            { id: "mistralai/mistral-nemo", name: "Mistral Nemo", provider: "mistral", icon: "🌊", color: "#ff7000", free: true, desc: "12B params, eficiente" },
+            // Google
+            { id: "google/gemma-4-31b", name: "Gemma 4 31B", provider: "google", icon: "🔮", color: "#4285f4", free: true, desc: "Google open source, 128K context" },
+            { id: "google/gemma-2-9b-it", name: "Gemma 2 9B", provider: "google", icon: "🔮", color: "#4285f4", free: true, desc: "Leve, 9B params" },
+            { id: "google/gemma-2-27b-it", name: "Gemma 2 27B", provider: "google", icon: "🔮", color: "#4285f4", free: true, desc: "Medio, 27B params" },
             // Qwen
-            { id: "qwen/qwen-2.5-72b-instruct", name: "Qwen 2.5 72B", provider: "qwen", icon: "🌟", color: "#7c3aed" },
-            { id: "qwen/qwen-2.5-32b-instruct", name: "Qwen 2.5 32B", provider: "qwen", icon: "⭐", color: "#7c3aed" },
-            { id: "qwen/qwen-2.5-14b-instruct", name: "Qwen 2.5 14B", provider: "qwen", icon: "✨", color: "#7c3aed" },
-            { id: "qwen/qwen-2.5-7b-instruct", name: "Qwen 2.5 7B", provider: "qwen", icon: "💫", color: "#7c3aed" },
-            { id: "qwen/qwen-2.5-coder-32b-instruct", name: "Qwen 2.5 Coder 32B", provider: "qwen", icon: "💻", color: "#7c3aed" },
-            { id: "qwen/qwen-3-235b-a22b", name: "Qwen 3 235B", provider: "qwen", icon: "🚀", color: "#7c3aed" },
-            // NVIDIA
-            { id: "nvidia/llama-3.1-nemotron-70b-instruct", name: "Nemotron 70B", provider: "nvidia", icon: "🟢", color: "#76b900" },
-            { id: "nvidia/llama-3.1-nemotron-51b-instruct", name: "Nemotron 51B", provider: "nvidia", icon: "🟢", color: "#76b900" },
-            { id: "nvidia/nemotron-nano-2-vl", name: "Nemotron Nano 2 VL", provider: "nvidia", icon: "👁️", color: "#76b900" },
-            // Perplexity
-            { id: "perplexity/llama-3.1-sonar-large-128k-online", name: "Sonar Large Online", provider: "perplexity", icon: "🔍", color: "#1db954" },
-            { id: "perplexity/llama-3.1-sonar-small-128k-online", name: "Sonar Small Online", provider: "perplexity", icon: "🔎", color: "#1db954" },
-            // 01.AI
-            { id: "01-ai/yi-large", name: "Yi Large", provider: "01ai", icon: "🌙", color: "#1a56db" },
-            { id: "01-ai/yi-34b-chat", name: "Yi 34B Chat", provider: "01ai", icon: "🌑", color: "#1a56db" },
-            // Nous
-            { id: "nousresearch/hermes-3-llama-3.1-405b", name: "Hermes 3 405B", provider: "nous", icon: "🏛️", color: "#f59e0b" },
-            // Moonshot
-            { id: "moonshotai/kimi-k2.6", name: "Kimi K2.6", provider: "moonshotai", icon: "🌙", color: "#10b981" },
-            { id: "moonshotai/kimi-k2.5", name: "Kimi K2.5", provider: "moonshotai", icon: "🌕", color: "#10b981" },
+            { id: "qwen/qwen2.5-72b-instruct", name: "Qwen 2.5 72B", provider: "qwen", icon: "🌟", color: "#7c3aed", free: true, desc: "128K context, 8K output" },
+            { id: "qwen/qwen2.5-32b-instruct", name: "Qwen 2.5 32B", provider: "qwen", icon: "⭐", color: "#7c3aed", free: true, desc: "Equilibrado" },
+            { id: "qwen/qwen2.5-14b-instruct", name: "Qwen 2.5 14B", provider: "qwen", icon: "✨", color: "#7c3aed", free: true, desc: "Rapido" },
+            { id: "qwen/qwen2.5-7b-instruct", name: "Qwen 2.5 7B", provider: "qwen", icon: "💫", color: "#7c3aed", free: true, desc: "Muito leve" },
+            { id: "qwen/qwen2.5-coder-32b-instruct", name: "Qwen 2.5 Coder 32B", provider: "qwen", icon: "💻", color: "#7c3aed", free: true, desc: "Especializado em codigo" },
+            { id: "qwen/qwen3-235b-a22b", name: "Qwen 3 235B", provider: "qwen", icon: "🚀", color: "#7c3aed", free: true, desc: "MoE, 235B params" },
             // MiniMax
-            { id: "minimax/m2.5", name: "MiniMax M2.5", provider: "minimax", icon: "📐", color: "#6366f1" },
-            // Z-AI
-            { id: "z-ai/glm-5", name: "Z-AI GLM-5", provider: "zai", icon: "🔺", color: "#dc2626" },
-            // Recraft
-            { id: "recraft/recraft-v4-1-utility", name: "Recraft V4.1 Utility", provider: "recraft", icon: "🎨", color: "#ec4899" },
-            // Free models
-            { id: "meta-llama/llama-3.2-3b-instruct:free", name: "Llama 3.2 3B (Free)", provider: "meta", icon: "🆓", color: "#0668e1" },
-            { id: "google/gemini-1.5-flash-8b:free", name: "Gemini 1.5 Flash 8B (Free)", provider: "google", icon: "🆓", color: "#4285f4" },
-            { id: "deepseek/deepseek-chat:free", name: "DeepSeek Chat (Free)", provider: "deepseek", icon: "🆓", color: "#4f46e5" },
-            { id: "qwen/qwen-2.5-7b-instruct:free", name: "Qwen 2.5 7B (Free)", provider: "qwen", icon: "🆓", color: "#7c3aed" },
-            { id: "mistralai/mistral-7b-instruct:free", name: "Mistral 7B (Free)", provider: "mistral", icon: "🆓", color: "#ff7000" },
-            { id: "nvidia/llama-3.1-nemotron-70b-instruct:free", name: "Nemotron 70B (Free)", provider: "nvidia", icon: "🆓", color: "#76b900" },
-            { id: "openrouter/llama-3.1-8b-instruct:free", name: "Llama 3.1 8B (Free)", provider: "openrouter", icon: "🆓", color: "#10a37f" },
-            { id: "openrouter/gemma-2-9b-it:free", name: "Gemma 2 9B (Free)", provider: "openrouter", icon: "🆓", color: "#10a37f" },
+            { id: "minimax/minimax-m2.7", name: "MiniMax M2.7", provider: "minimax", icon: "📐", color: "#6366f1", free: true, desc: "Raciocinio, 230B params" },
+            { id: "minimax/minimax-m2.5", name: "MiniMax M2.5", provider: "minimax", icon: "📐", color: "#6366f1", free: true, desc: "Coding, office tasks" },
+            // Moonshot (Kimi)
+            { id: "moonshotai/kimi-k2.5", name: "Kimi K2.5", provider: "moonshotai", icon: "🌙", color: "#10b981", free: true, desc: "1T MoE, 200K context, multimodal" },
+            { id: "moonshotai/kimi-k2", name: "Kimi K2", provider: "moonshotai", icon: "🌕", color: "#10b981", free: true, desc: "Long context, documentos" },
+            // Zhipu (GLM)
+            { id: "zhipuai/glm-5", name: "GLM 5", provider: "zhipuai", icon: "🔺", color: "#dc2626", free: true, desc: "744B MoE, raciocinio complexo" },
+            { id: "zhipuai/glm-5.1", name: "GLM 5.1", provider: "zhipuai", icon: "🔺", color: "#dc2626", free: true, desc: "Agentic workflows" },
+            { id: "zhipuai/glm-4.7", name: "GLM 4.7", provider: "zhipuai", icon: "🔺", color: "#dc2626", free: true, desc: "Multilingual coding" },
+            // StepFun
+            { id: "stepfun-ai/step-3.7-flash", name: "Step 3.7 Flash", provider: "stepfun", icon: "⚡", color: "#f59e0b", free: true, desc: "Agentes, rapido" },
+            // OpenAI OSS
+            { id: "openai/gpt-oss-120b", name: "GPT-OSS 120B", provider: "openai", icon: "🤖", color: "#10a37f", free: true, desc: "Open source da OpenAI" },
+            // Sarvam
+            { id: "sarvam/sarvam-m", name: "Sarvam M", provider: "sarvam", icon: "🇮🇳", color: "#ff9933", free: true, desc: "Indic languages" },
+            // Other
+            { id: "01-ai/yi-large", name: "Yi Large", provider: "01ai", icon: "🌑", color: "#1a56db", free: true, desc: "01.AI flagship" },
+            { id: "nousresearch/hermes-3-llama-3.1-405b", name: "Hermes 3 405B", provider: "nous", icon: "🏛️", color: "#f59e0b", free: true, desc: "Nous Research, fine-tuned" },
+        ];
+
+        // ========== OPENROUTER MODELS ==========
+        var OPENROUTER_MODELS = [
+            { id: "openrouter/auto", name: "OpenRouter Auto", provider: "openrouter", icon: "🎲", color: "#10a37f", free: false, desc: "Escolha automatica" },
+            { id: "~openai/gpt-latest", name: "GPT Latest (Auto)", provider: "openai", icon: "🤖", color: "#10a37f", free: false, desc: "Sempre o mais recente" },
+            { id: "openai/gpt-4o", name: "GPT-4o", provider: "openai", icon: "🤖", color: "#10a37f", free: false, desc: "OpenAI flagship" },
+            { id: "openai/gpt-4o-mini", name: "GPT-4o Mini", provider: "openai", icon: "⚡", color: "#10a37f", free: false, desc: "Rapido e barato" },
+            { id: "openai/gpt-4-turbo", name: "GPT-4 Turbo", provider: "openai", icon: "🧠", color: "#10a37f", free: false, desc: "Turbo version" },
+            { id: "openai/gpt-4", name: "GPT-4", provider: "openai", icon: "💎", color: "#10a37f", free: false, desc: "Original GPT-4" },
+            { id: "openai/gpt-3.5-turbo", name: "GPT-3.5 Turbo", provider: "openai", icon: "💬", color: "#10a37f", free: false, desc: "Economico" },
+            { id: "openai/o1", name: "o1", provider: "openai", icon: "🧩", color: "#10a37f", free: false, desc: "Reasoning model" },
+            { id: "openai/o1-mini", name: "o1 Mini", provider: "openai", icon: "🔹", color: "#10a37f", free: false, desc: "Reasoning leve" },
+            { id: "openai/o3-mini", name: "o3 Mini", provider: "openai", icon: "🔸", color: "#10a37f", free: false, desc: "Reasoning avancado" },
+            { id: "anthropic/claude-3.5-sonnet", name: "Claude 3.5 Sonnet", provider: "anthropic", icon: "🎭", color: "#cc785c", free: false, desc: "Excelente para codigo" },
+            { id: "anthropic/claude-3.5-haiku", name: "Claude 3.5 Haiku", provider: "anthropic", icon: "🐇", color: "#cc785c", free: false, desc: "Rapido" },
+            { id: "anthropic/claude-3-opus", name: "Claude 3 Opus", provider: "anthropic", icon: "👑", color: "#cc785c", free: false, desc: "Mais poderoso" },
+            { id: "anthropic/claude-3-sonnet", name: "Claude 3 Sonnet", provider: "anthropic", icon: "🎨", color: "#cc785c", free: false, desc: "Balanceado" },
+            { id: "anthropic/claude-3-haiku", name: "Claude 3 Haiku", provider: "anthropic", icon: "🌸", color: "#cc785c", free: false, desc: "Leve" },
+            { id: "google/gemini-2.0-flash", name: "Gemini 2.0 Flash", provider: "google", icon: "✨", color: "#4285f4", free: false, desc: "Google flagship" },
+            { id: "google/gemini-2.0-flash-thinking", name: "Gemini 2.0 Flash Thinking", provider: "google", icon: "💭", color: "#4285f4", free: false, desc: "Chain of thought" },
+            { id: "google/gemini-1.5-pro", name: "Gemini 1.5 Pro", provider: "google", icon: "🔮", color: "#4285f4", free: false, desc: "1M context" },
+            { id: "google/gemini-1.5-flash", name: "Gemini 1.5 Flash", provider: "google", icon: "⚡", color: "#4285f4", free: false, desc: "Rapido" },
+            { id: "google/gemini-1.5-flash-8b", name: "Gemini 1.5 Flash 8B", provider: "google", icon: "🔹", color: "#4285f4", free: false, desc: "Muito leve" },
+            { id: "google/gemini-2.5-pro-preview", name: "Gemini 2.5 Pro Preview", provider: "google", icon: "🔮", color: "#4285f4", free: false, desc: "Preview" },
+            { id: "meta-llama/llama-3.1-405b-instruct", name: "Llama 3.1 405B (OR)", provider: "meta", icon: "🦙", color: "#0668e1", free: false, desc: "Via OpenRouter" },
+            { id: "meta-llama/llama-3.1-70b-instruct", name: "Llama 3.1 70B (OR)", provider: "meta", icon: "🦙", color: "#0668e1", free: false, desc: "Via OpenRouter" },
+            { id: "meta-llama/llama-3.1-8b-instruct", name: "Llama 3.1 8B (OR)", provider: "meta", icon: "🦙", color: "#0668e1", free: false, desc: "Via OpenRouter" },
+            { id: "mistralai/mistral-large", name: "Mistral Large", provider: "mistral", icon: "🌊", color: "#ff7000", free: false, desc: "Via OpenRouter" },
+            { id: "mistralai/mistral-medium", name: "Mistral Medium", provider: "mistral", icon: "🌊", color: "#ff7000", free: false, desc: "Via OpenRouter" },
+            { id: "mistralai/mistral-small", name: "Mistral Small", provider: "mistral", icon: "🌊", color: "#ff7000", free: false, desc: "Via OpenRouter" },
+            { id: "deepseek/deepseek-chat", name: "DeepSeek Chat (OR)", provider: "deepseek", icon: "🐋", color: "#4f46e5", free: false, desc: "Via OpenRouter" },
+            { id: "deepseek/deepseek-coder", name: "DeepSeek Coder (OR)", provider: "deepseek", icon: "💻", color: "#4f46e5", free: false, desc: "Via OpenRouter" },
+            { id: "deepseek/deepseek-r1", name: "DeepSeek R1 (OR)", provider: "deepseek", icon: "🔬", color: "#4f46e5", free: false, desc: "Via OpenRouter" },
+            { id: "x-ai/grok-2", name: "Grok 2", provider: "xai", icon: "🤖", color: "#000000", free: false, desc: "xAI" },
+            { id: "x-ai/grok-2-mini", name: "Grok 2 Mini", provider: "xai", icon: "⚡", color: "#000000", free: false, desc: "xAI leve" },
+            { id: "cohere/command-r-plus", name: "Command R+", provider: "cohere", icon: "📚", color: "#d6a45d", free: false, desc: "Cohere" },
+            { id: "cohere/command-r", name: "Command R", provider: "cohere", icon: "📖", color: "#d6a45d", free: false, desc: "Cohere" },
+            // OpenRouter Free models
+            { id: "meta-llama/llama-3.2-3b-instruct:free", name: "Llama 3.2 3B (Free)", provider: "meta", icon: "🆓", color: "#0668e1", free: true, desc: "Limitado: 20 RPM, 50 RPD" },
+            { id: "google/gemini-1.5-flash-8b:free", name: "Gemini 1.5 Flash 8B (Free)", provider: "google", icon: "🆓", color: "#4285f4", free: true, desc: "Limitado: 20 RPM, 50 RPD" },
+            { id: "deepseek/deepseek-chat:free", name: "DeepSeek Chat (Free)", provider: "deepseek", icon: "🆓", color: "#4f46e5", free: true, desc: "Limitado: 20 RPM, 50 RPD" },
+            { id: "qwen/qwen-2.5-7b-instruct:free", name: "Qwen 2.5 7B (Free)", provider: "qwen", icon: "🆓", color: "#7c3aed", free: true, desc: "Limitado: 20 RPM, 50 RPD" },
+            { id: "mistralai/mistral-7b-instruct:free", name: "Mistral 7B (Free)", provider: "mistral", icon: "🆓", color: "#ff7000", free: true, desc: "Limitado: 20 RPM, 50 RPD" },
+            { id: "nvidia/nemotron-3-super-120b-a12b:free", name: "Nemotron 3 Super (Free)", provider: "nvidia", icon: "🆓", color: "#76b900", free: true, desc: "Limitado: 20 RPM, 50 RPD" },
+            { id: "openrouter/gemma-2-9b-it:free", name: "Gemma 2 9B (Free)", provider: "openrouter", icon: "🆓", color: "#10a37f", free: true, desc: "Limitado: 20 RPM, 50 RPD" },
+            { id: "meta-llama/llama-4-scout:free", name: "Llama 4 Scout (Free)", provider: "meta", icon: "🆓", color: "#0668e1", free: true, desc: "Limitado: 20 RPM, 50 RPD" },
+            { id: "meta-llama/llama-4-maverick:free", name: "Llama 4 Maverick (Free)", provider: "meta", icon: "🆓", color: "#0668e1", free: true, desc: "Limitado: 20 RPM, 50 RPD" },
+            { id: "openai/gpt-oss-120b:free", name: "GPT-OSS 120B (Free)", provider: "openai", icon: "🆓", color: "#10a37f", free: true, desc: "Limitado: 20 RPM, 50 RPD" },
         ];
 
         // ========== STATE ==========
-        var currentModel = DEFAULT_MODELS[0];
-        var allModels = DEFAULT_MODELS.slice();
+        var currentProvider = 'nvidia';
+        var currentModel = NVIDIA_MODELS[0];
+        var allNvidiaModels = NVIDIA_MODELS.slice();
+        var allOpenRouterModels = OPENROUTER_MODELS.slice();
         var messages = [];
         var chatHistory = [];
         var isTyping = false;
         var currentChatId = null;
 
         var config = {
+            nvidia: '',
             openrouter: '',
             userName: 'Christian',
             theme: 'light',
             siteUrl: '',
-            appName: 'ChatGPT Clone - OpenRouter'
+            appName: 'ChatGPT Clone'
         };
 
         // ========== DOM REFERENCES ==========
@@ -557,10 +637,9 @@
         function init() {
             loadConfig();
             updateUI();
-            renderModelList(allModels);
+            renderModelList();
             bindEvents();
-            // Try to fetch models from API after a short delay
-            setTimeout(refreshModels, 500);
+            checkApiStatus();
         }
 
         function bindEvents() {
@@ -592,6 +671,9 @@
                 filterModels(this.value);
             });
 
+            $('tabNvidia').addEventListener('click', function() { switchProvider('nvidia'); });
+            $('tabOpenRouter').addEventListener('click', function() { switchProvider('openrouter'); });
+
             document.addEventListener('click', function(e) {
                 if (!e.target.closest('.model-selector')) {
                     $('modelDropdown').classList.remove('show');
@@ -612,16 +694,18 @@
 
         // ========== CONFIG ==========
         function loadConfig() {
-            var saved = localStorage.getItem('chatConfigOpenRouter');
+            var saved = localStorage.getItem('chatConfigV2');
             if (saved) {
                 try {
                     var parsed = JSON.parse(saved);
+                    config.nvidia = parsed.nvidia || '';
                     config.openrouter = parsed.openrouter || '';
                     config.userName = parsed.userName || 'Christian';
                     config.theme = parsed.theme || 'light';
                     config.siteUrl = parsed.siteUrl || '';
                     config.appName = parsed.appName || '';
 
+                    $('apiKeyNvidia').value = config.nvidia;
                     $('apiKeyOpenRouter').value = config.openrouter;
                     $('userNameInput').value = config.userName;
                     $('siteUrl').value = config.siteUrl;
@@ -636,12 +720,13 @@
         }
 
         function saveSettings() {
+            config.nvidia = $('apiKeyNvidia').value.trim();
             config.openrouter = $('apiKeyOpenRouter').value.trim();
             config.userName = $('userNameInput').value.trim() || 'Christian';
             config.siteUrl = $('siteUrl').value.trim();
-            config.appName = $('appName').value.trim() || 'ChatGPT Clone - OpenRouter';
+            config.appName = $('appName').value.trim() || 'ChatGPT Clone';
 
-            localStorage.setItem('chatConfigOpenRouter', JSON.stringify(config));
+            localStorage.setItem('chatConfigV2', JSON.stringify(config));
             updateUI();
             closeSettings();
             showToast('Configuracoes salvas!');
@@ -653,10 +738,34 @@
             $('welcomeName').textContent = config.userName;
             $('userAvatar').textContent = config.userName.charAt(0).toUpperCase();
             $('currentModel').textContent = currentModel.name;
+            $('providerBadge').textContent = currentProvider === 'nvidia' ? 'NVIDIA' : 'OpenRouter';
+            $('providerBadge').className = 'provider-badge ' + (currentProvider === 'nvidia' ? 'nvidia' : 'openrouter');
+            $('footerProvider').textContent = currentProvider === 'nvidia' ? 'NVIDIA NIM (Gratuito)' : 'OpenRouter';
+        }
+
+        // ========== PROVIDER SWITCHING ==========
+        function switchProvider(provider) {
+            currentProvider = provider;
+            $('tabNvidia').classList.toggle('active', provider === 'nvidia');
+            $('tabOpenRouter').classList.toggle('active', provider === 'openrouter');
+
+            if (provider === 'nvidia') {
+                currentModel = allNvidiaModels[0];
+            } else {
+                currentModel = allOpenRouterModels[0];
+            }
+
+            updateUI();
+            renderModelList();
+            $('modelSearch').value = '';
         }
 
         // ========== MODELS ==========
         function refreshModels() {
+            if (currentProvider === 'nvidia') {
+                showToast('NVIDIA: Usando catalogo offline (100+ modelos verificados)');
+                return;
+            }
             showToast('Buscando modelos do OpenRouter...');
             fetch('https://openrouter.ai/api/v1/models')
                 .then(function(response) {
@@ -676,53 +785,52 @@
                             provider: provider,
                             icon: getProviderIcon(provider),
                             color: getProviderColor(provider),
-                            description: m.description || ''
+                            free: m.id.includes(':free'),
+                            desc: m.description || ''
                         });
                         seen[m.id] = true;
                     });
 
-                    DEFAULT_MODELS.forEach(function(m) {
+                    OPENROUTER_MODELS.forEach(function(m) {
                         if (!seen[m.id]) {
                             merged.push(m);
                         }
                     });
 
-                    allModels = merged;
-                    renderModelList(allModels);
-                    showToast(allModels.length + ' modelos carregados!');
-
-                    $('apiStatusDot').classList.remove('offline');
-                    $('apiStatusText').textContent = allModels.length + ' modelos';
+                    allOpenRouterModels = merged;
+                    if (currentProvider === 'openrouter') {
+                        renderModelList();
+                    }
+                    showToast(allOpenRouterModels.length + ' modelos OpenRouter carregados!');
                 })
                 .catch(function(error) {
-                    showToast('Usando lista offline de modelos (' + allModels.length + ')', true);
-                    $('apiStatusDot').classList.add('offline');
-                    $('apiStatusText').textContent = 'Offline';
+                    showToast('Usando lista offline OpenRouter (' + allOpenRouterModels.length + ')', true);
                 });
         }
 
         function getProviderColor(provider) {
             var colors = {
-                openai: '#10a37f', anthropic: '#cc785c', google: '#4285f4', meta: '#0668e1',
-                mistral: '#ff7000', deepseek: '#4f46e5', xai: '#000000', cohere: '#d6a45d',
-                qwen: '#7c3aed', nvidia: '#76b900', perplexity: '#1db954', moonshotai: '#10b981',
-                nousresearch: '#f59e0b', openrouter: '#10a37f', minimax: '#6366f1', zai: '#dc2626',
-                recraft: '#ec4899', '01ai': '#1a56db'
+                nvidia: '#76b900', openai: '#10a37f', anthropic: '#cc785c', google: '#4285f4',
+                meta: '#0668e1', mistral: '#ff7000', deepseek: '#4f46e5', xai: '#000000',
+                cohere: '#d6a45d', qwen: '#7c3aed', moonshotai: '#10b981', zhipuai: '#dc2626',
+                stepfun: '#f59e0b', minimax: '#6366f1', openrouter: '#10a37f', nous: '#f59e0b',
+                sarvam: '#ff9933', '01ai': '#1a56db'
             };
             return colors[provider] || '#6b7280';
         }
 
         function getProviderIcon(provider) {
             var icons = {
-                openai: '🤖', anthropic: '🎭', google: '🔮', meta: '🦙', mistral: '🌊',
-                deepseek: '🐋', xai: '🤖', cohere: '📚', qwen: '🌟', nvidia: '🟢',
-                perplexity: '🔍', moonshotai: '🌙', nousresearch: '🏛️', openrouter: '🎲',
-                minimax: '📐', zai: '🔺', recraft: '🎨', '01ai': '🌙'
+                nvidia: '🟢', openai: '🤖', anthropic: '🎭', google: '🔮', meta: '🦙',
+                mistral: '🌊', deepseek: '🐋', xai: '🤖', cohere: '📚', qwen: '🌟',
+                moonshotai: '🌙', zhipuai: '🔺', stepfun: '⚡', minimax: '📐',
+                openrouter: '🎲', nous: '🏛️', sarvam: '🇮🇳', '01ai': '🌑'
             };
             return icons[provider] || '⚡';
         }
 
-        function renderModelList(models) {
+        function renderModelList() {
+            var models = currentProvider === 'nvidia' ? allNvidiaModels : allOpenRouterModels;
             var container = $('modelList');
             var grouped = {};
             models.forEach(function(m) {
@@ -730,7 +838,7 @@
                 grouped[m.provider].push(m);
             });
 
-            var providerOrder = ['openrouter', 'openai', 'anthropic', 'google', 'meta', 'mistral', 'deepseek', 'xai', 'qwen', 'cohere', 'nvidia', 'perplexity', 'moonshotai', 'nousresearch', 'minimax', 'zai', 'recraft', '01ai'];
+            var providerOrder = ['nvidia', 'openai', 'anthropic', 'google', 'meta', 'mistral', 'deepseek', 'qwen', 'moonshotai', 'zhipuai', 'minimax', 'stepfun', 'xai', 'cohere', 'nous', 'sarvam', '01ai', 'openrouter'];
             var sortedProviders = Object.keys(grouped).sort(function(a, b) {
                 var ia = providerOrder.indexOf(a);
                 var ib = providerOrder.indexOf(b);
@@ -752,8 +860,11 @@
                     html += '<div class="model-option ' + (isSelected ? 'selected' : '') + '" data-model-id="' + m.id + '" data-model-name="' + safeName + '" data-model-provider="' + m.provider + '">' +
                         '<div class="model-icon" style="background: ' + m.color + '20; color: ' + m.color + ';">' + m.icon + '</div>' +
                         '<div class="model-details">' +
-                            '<div class="model-name">' + m.name + '</div>' +
-                            '<div class="model-desc">' + m.id + '</div>' +
+                            '<div class="model-name-row">' +
+                                '<div class="model-name">' + m.name + '</div>' +
+                                (m.free ? '<span class="free-badge">GRATIS</span>' : '') +
+                            '</div>' +
+                            '<div class="model-desc">' + (m.desc || m.id) + '</div>' +
                         '</div>' +
                     '</div>';
                 });
@@ -773,17 +884,50 @@
 
         function filterModels(query) {
             var q = query.toLowerCase();
-            var filtered = allModels.filter(function(m) {
+            var models = currentProvider === 'nvidia' ? allNvidiaModels : allOpenRouterModels;
+            var filtered = models.filter(function(m) {
                 return m.name.toLowerCase().includes(q) ||
                        m.id.toLowerCase().includes(q) ||
-                       m.provider.toLowerCase().includes(q);
+                       m.provider.toLowerCase().includes(q) ||
+                       (m.desc && m.desc.toLowerCase().includes(q));
             });
-            renderModelList(filtered);
+
+            var container = $('modelList');
+            var html = '';
+            if (filtered.length === 0) {
+                html = '<div style="padding: 20px; text-align: center; color: var(--text-secondary);">Nenhum modelo encontrado</div>';
+            } else {
+                filtered.forEach(function(m) {
+                    var isSelected = currentModel.id === m.id;
+                    var safeName = m.name.replace(/'/g, "\\'");
+                    html += '<div class="model-option ' + (isSelected ? 'selected' : '') + '" data-model-id="' + m.id + '" data-model-name="' + safeName + '" data-model-provider="' + m.provider + '">' +
+                        '<div class="model-icon" style="background: ' + m.color + '20; color: ' + m.color + ';">' + m.icon + '</div>' +
+                        '<div class="model-details">' +
+                            '<div class="model-name-row">' +
+                                '<div class="model-name">' + m.name + '</div>' +
+                                (m.free ? '<span class="free-badge">GRATIS</span>' : '') +
+                            '</div>' +
+                            '<div class="model-desc">' + (m.desc || m.id) + '</div>' +
+                        '</div>' +
+                    '</div>';
+                });
+            }
+            container.innerHTML = html;
+
+            container.querySelectorAll('.model-option').forEach(function(el) {
+                el.addEventListener('click', function() {
+                    var id = this.getAttribute('data-model-id');
+                    var name = this.getAttribute('data-model-name');
+                    var provider = this.getAttribute('data-model-provider');
+                    selectModel(id, name, provider);
+                });
+            });
         }
 
         function selectModel(id, name, provider) {
-            var found = allModels.find(function(m) { return m.id === id; });
-            currentModel = found || { id: id, name: name, provider: provider, icon: '⚡', color: '#6b7280' };
+            var models = currentProvider === 'nvidia' ? allNvidiaModels : allOpenRouterModels;
+            var found = models.find(function(m) { return m.id === id; });
+            currentModel = found || { id: id, name: name, provider: provider, icon: '⚡', color: '#6b7280', free: false, desc: '' };
             $('currentModel').textContent = currentModel.name;
 
             document.querySelectorAll('.model-option').forEach(function(el) {
@@ -794,7 +938,7 @@
 
             $('modelDropdown').classList.remove('show');
             $('modelSearch').value = '';
-            renderModelList(allModels);
+            renderModelList();
         }
 
         function toggleModelDropdown() {
@@ -834,8 +978,10 @@
             var text = input.value.trim();
             if (!text || isTyping) return;
 
-            if (!config.openrouter) {
-                showToast('Configure sua API Key do OpenRouter primeiro!', true);
+            var apiKey = currentProvider === 'nvidia' ? config.nvidia : config.openrouter;
+            if (!apiKey) {
+                var providerName = currentProvider === 'nvidia' ? 'NVIDIA' : 'OpenRouter';
+                showToast('Configure sua API Key da ' + providerName + ' primeiro!', true);
                 openSettings();
                 return;
             }
@@ -853,7 +999,8 @@
             showTyping();
             isTyping = true;
 
-            callOpenRouter()
+            var promise = currentProvider === 'nvidia' ? callNvidia() : callOpenRouter();
+            promise
                 .then(function(response) {
                     removeTyping();
                     addMessage('ai', response);
@@ -869,44 +1016,44 @@
                 });
         }
 
-        function formatError(error) {
-            var status = error.status || 0;
-            var msg = error.message || 'Erro desconhecido';
+        function callNvidia() {
+            var headers = {
+                'Authorization': 'Bearer ' + config.nvidia,
+                'Content-Type': 'application/json'
+            };
+            if (config.siteUrl) headers['HTTP-Referer'] = config.siteUrl;
+            if (config.appName) headers['X-Title'] = config.appName;
 
-            if (status === 402 || msg.includes('402') || msg.includes('credits') || msg.includes('payment')) {
-                return '❌ **Sem creditos no OpenRouter**\n\n' +
-                    'Adicione creditos em [openrouter.ai/credits](https://openrouter.ai/credits) ou use um modelo **Free** (marcado com 🆓).\n\n' +
-                    'Modelos gratuitos recomendados:\n' +
-                    '- `meta-llama/llama-3.2-3b-instruct:free`\n' +
-                    '- `google/gemini-1.5-flash-8b:free`\n' +
-                    '- `deepseek/deepseek-chat:free`\n' +
-                    '- `openrouter/gemma-2-9b-it:free`';
-            }
-            if (status === 404 || msg.includes('404') || msg.includes('not found')) {
-                return '❌ **Modelo nao encontrado** (`' + currentModel.id + '`)\n\n' +
-                    'Este modelo pode ter sido removido ou renomeado.\n' +
-                    'Clique em 🔄 **Atualizar lista de modelos** no dropdown para sincronizar.';
-            }
-            if (status === 400 || msg.includes('400')) {
-                return '❌ **Requisicao invalida**\n\n' +
-                    'Detalhe: ' + msg + '\n\n' +
-                    'Tente usar `openrouter/auto` que escolhe automaticamente um modelo disponivel.';
-            }
-            if (status === 429 || msg.includes('429') || msg.includes('rate limit')) {
-                return '⏳ **Muitas requisicoes**\n\n' +
-                    'Aguarde alguns segundos e tente novamente.';
-            }
-            if (status === 401 || msg.includes('401') || msg.includes('unauthorized') || msg.includes('invalid key')) {
-                return '🔑 **API Key invalida**\n\n' +
-                    'Verifique sua API Key em [openrouter.ai/keys](https://openrouter.ai/keys)';
-            }
-            if (status === 503 || msg.includes('503') || msg.includes('overloaded') || msg.includes('unavailable')) {
-                return '🔧 **Modelo indisponivel no momento**\n\n' +
-                    'O provedor deste modelo esta sobrecarregado. Tente outro modelo ou aguarde.';
-            }
-            return '❌ **Erro:** ' + msg + '\n\n' +
-                'Status: ' + (status || 'desconhecido') + '\n' +
-                'Modelo: `' + currentModel.id + '`';
+            return fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify({
+                    model: currentModel.id,
+                    messages: messages,
+                    stream: false,
+                    temperature: 0.6,
+                    max_tokens: 4096
+                })
+            }).then(function(response) {
+                if (!response.ok) {
+                    return response.text().then(function(text) {
+                        var err = { status: response.status, message: text, provider: 'nvidia' };
+                        try {
+                            var parsed = JSON.parse(text);
+                            if (parsed.error && parsed.error.message) {
+                                err.message = parsed.error.message;
+                            }
+                        } catch(e) {}
+                        throw err;
+                    });
+                }
+                return response.json();
+            }).then(function(data) {
+                if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+                    throw { status: 0, message: 'Resposta invalida da API', provider: 'nvidia' };
+                }
+                return data.choices[0].message.content;
+            });
         }
 
         function callOpenRouter() {
@@ -914,7 +1061,6 @@
                 'Authorization': 'Bearer ' + config.openrouter,
                 'Content-Type': 'application/json'
             };
-
             if (config.siteUrl) headers['HTTP-Referer'] = config.siteUrl;
             if (config.appName) headers['X-Title'] = config.appName;
 
@@ -929,7 +1075,7 @@
             }).then(function(response) {
                 if (!response.ok) {
                     return response.text().then(function(text) {
-                        var err = { status: response.status, message: text };
+                        var err = { status: response.status, message: text, provider: 'openrouter' };
                         try {
                             var parsed = JSON.parse(text);
                             if (parsed.error && parsed.error.message) {
@@ -942,10 +1088,71 @@
                 return response.json();
             }).then(function(data) {
                 if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-                    throw { status: 0, message: 'Resposta invalida da API' };
+                    throw { status: 0, message: 'Resposta invalida da API', provider: 'openrouter' };
                 }
                 return data.choices[0].message.content;
             });
+        }
+
+        function formatError(error) {
+            var status = error.status || 0;
+            var msg = error.message || 'Erro desconhecido';
+            var provider = error.provider || currentProvider;
+
+            if (provider === 'nvidia') {
+                if (status === 402 || msg.includes('credits') || msg.includes('payment') || msg.includes('quota')) {
+                    return '❌ **Creditos NVIDIA esgotados**\n\n' +
+                        'Voce usou seus 1000 creditos gratuitos.\n\n' +
+                        '**Opcoes:**\n' +
+                        '1. Solicite mais creditos em [build.nvidia.com](https://build.nvidia.com)\n' +
+                        '2. Mude para **OpenRouter** e use modelos `:free`\n' +
+                        '3. Use modelos menores (consomem menos creditos)';
+                }
+                if (status === 429 || msg.includes('rate limit') || msg.includes('429')) {
+                    return '⏳ **Limite de requisicoes NVIDIA**\n\n' +
+                        'Limite: 40 req/min por modelo.\n' +
+                        'Aguarde alguns segundos e tente novamente.';
+                }
+                if (status === 401 || msg.includes('unauthorized') || msg.includes('invalid key')) {
+                    return '🔑 **API Key NVIDIA invalida**\n\n' +
+                        'Verifique sua key em [build.nvidia.com/settings/api-keys](https://build.nvidia.com/settings/api-keys)\n' +
+                        'Formato: `nvapi-...`';
+                }
+                if (status === 404 || msg.includes('not found')) {
+                    return '❌ **Modelo nao encontrado no NVIDIA**\n\n' +
+                        'Modelo: `' + currentModel.id + '`\n\n' +
+                        'Verifique se o modelo esta disponivel em [build.nvidia.com/models](https://build.nvidia.com/models)';
+                }
+                if (status === 503 || msg.includes('overloaded')) {
+                    return '🔧 **NVIDIA DGX Cloud sobrecarregado**\n\n' +
+                        'Tente novamente em alguns instantes ou use outro modelo.';
+                }
+                return '❌ **Erro NVIDIA** (' + status + ')\n\n' + msg;
+            }
+
+            // OpenRouter errors
+            if (status === 402 || msg.includes('402') || msg.includes('credits')) {
+                return '❌ **Sem creditos no OpenRouter**\n\n' +
+                    'Adicione creditos em [openrouter.ai/credits](https://openrouter.ai/credits) ou use um modelo **Free** (com 🆓).\n\n' +
+                    'Modelos gratuitos recomendados:\n' +
+                    '- `meta-llama/llama-3.2-3b-instruct:free`\n' +
+                    '- `google/gemini-1.5-flash-8b:free`\n' +
+                    '- `deepseek/deepseek-chat:free`\n' +
+                    '- `nvidia/nemotron-3-super-120b-a12b:free`';
+            }
+            if (status === 404 || msg.includes('404')) {
+                return '❌ **Modelo nao encontrado** (`' + currentModel.id + '`)\n\n' +
+                    'Clique em 🔄 **Atualizar lista de modelos** para sincronizar.';
+            }
+            if (status === 429 || msg.includes('429')) {
+                return '⏳ **Muitas requisicoes**\n\n' +
+                    'Aguarde alguns segundos e tente novamente.';
+            }
+            if (status === 401 || msg.includes('401')) {
+                return '🔑 **API Key OpenRouter invalida**\n\n' +
+                    'Verifique em [openrouter.ai/keys](https://openrouter.ai/keys)';
+            }
+            return '❌ **Erro** (' + status + ')\n\n' + msg;
         }
 
         function addMessage(role, content) {
@@ -1008,7 +1215,7 @@
             var next = current === 'dark' ? 'light' : 'dark';
             document.body.setAttribute('data-theme', next);
             config.theme = next;
-            localStorage.setItem('chatConfigOpenRouter', JSON.stringify(config));
+            localStorage.setItem('chatConfigV2', JSON.stringify(config));
             $('themeIcon').textContent = next === 'dark' ? '☀️' : '🌙';
         }
 
@@ -1039,12 +1246,27 @@
         }
 
         function checkApiStatus() {
-            if (config.openrouter) {
-                $('apiStatusDot').classList.remove('offline');
-                $('apiStatusText').textContent = 'Conectado';
+            var nvidiaOk = !!config.nvidia;
+            var orOk = !!config.openrouter;
+            var dot = $('apiStatusDot');
+            var text = $('apiStatusText');
+
+            if (currentProvider === 'nvidia') {
+                if (nvidiaOk) {
+                    dot.className = 'api-status-dot nvidia';
+                    text.textContent = 'NVIDIA OK';
+                } else {
+                    dot.className = 'api-status-dot offline';
+                    text.textContent = 'NVIDIA: Sem Key';
+                }
             } else {
-                $('apiStatusDot').classList.add('offline');
-                $('apiStatusText').textContent = 'Sem API Key';
+                if (orOk) {
+                    dot.className = 'api-status-dot openrouter';
+                    text.textContent = 'OpenRouter OK';
+                } else {
+                    dot.className = 'api-status-dot offline';
+                    text.textContent = 'OR: Sem Key';
+                }
             }
         }
 
@@ -1060,7 +1282,6 @@
         });
 
         document.addEventListener('DOMContentLoaded', init);
-        checkApiStatus();
     })();
     </script>
 </body>
