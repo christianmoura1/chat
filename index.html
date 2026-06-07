@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ChatGPT Clone - NVIDIA NIM + OpenRouter</title>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
@@ -13,6 +14,7 @@
             --button-text: #ffffff; --accent-color: #10a37f; --message-user-bg: #f7f7f8;
             --message-ai-bg: #ffffff; --shadow: 0 2px 6px rgba(0,0,0,0.05); --danger: #ef4444;
             --nvidia: #76b900; --openrouter: #10a37f; --warning: #f59e0b;
+            --google-blue: #4285f4; --google-red: #ea4335; --google-yellow: #fbbc05; --google-green: #34a853;
         }
         [data-theme="dark"] {
             --sidebar-bg: #171717; --sidebar-hover: #262626; --sidebar-text: #ececec;
@@ -27,6 +29,130 @@
             background: var(--main-bg); color: var(--text-primary); height: 100vh; overflow: hidden;
             transition: background 0.3s, color 0.3s;
         }
+
+        /* ========== LOGIN SCREEN ========== */
+        .login-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            z-index: 100000; display: flex; align-items: center; justify-content: center;
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+        .login-overlay.hidden {
+            opacity: 0; transform: scale(1.05); pointer-events: none;
+        }
+        .login-card {
+            background: var(--main-bg); border-radius: 24px; padding: 48px 40px;
+            box-shadow: 0 25px 80px rgba(0,0,0,0.3); width: 100%; max-width: 440px;
+            text-align: center; animation: slideUp 0.6s ease;
+            transition: background 0.3s;
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(40px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .login-logo {
+            width: 64px; height: 64px; border-radius: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex; align-items: center; justify-content: center; margin: 0 auto 24px;
+            font-size: 32px; color: white; box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+        }
+        .login-title {
+            font-size: 28px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px;
+            letter-spacing: -0.5px;
+        }
+        .login-subtitle {
+            font-size: 15px; color: var(--text-secondary); margin-bottom: 32px; line-height: 1.5;
+        }
+        .login-divider {
+            display: flex; align-items: center; gap: 16px; margin: 20px 0;
+            color: var(--text-secondary); font-size: 13px;
+        }
+        .login-divider::before, .login-divider::after {
+            content: ''; flex: 1; height: 1px; background: var(--border-color);
+        }
+        .google-btn-container {
+            display: flex; justify-content: center; margin: 8px 0;
+        }
+        .guest-btn {
+            width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px;
+            background: transparent; color: var(--text-primary); font-size: 14px; font-weight: 500;
+            cursor: pointer; transition: all 0.2s; margin-top: 8px;
+        }
+        .guest-btn:hover { background: var(--sidebar-hover); }
+        .login-footer {
+            margin-top: 24px; font-size: 12px; color: var(--text-secondary); line-height: 1.5;
+        }
+        .login-features {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 24px 0;
+        }
+        .login-feature {
+            display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary);
+            text-align: left; padding: 8px;
+        }
+        .login-feature-icon {
+            width: 32px; height: 32px; border-radius: 8px;
+            background: rgba(16, 163, 127, 0.1); color: var(--accent-color);
+            display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0;
+        }
+        .user-info-login {
+            display: flex; align-items: center; gap: 12px; margin-bottom: 20px;
+            padding: 12px; background: var(--input-bg); border-radius: 12px;
+        }
+        .user-info-login img {
+            width: 40px; height: 40px; border-radius: 50%; object-fit: cover;
+        }
+        .user-info-login-text { text-align: left; }
+        .user-info-login-name { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+        .user-info-login-email { font-size: 12px; color: var(--text-secondary); }
+        .continue-btn {
+            width: 100%; padding: 12px; border: none; border-radius: 8px;
+            background: var(--accent-color); color: white; font-size: 14px; font-weight: 600;
+            cursor: pointer; transition: opacity 0.2s; margin-top: 8px;
+        }
+        .continue-btn:hover { opacity: 0.9; }
+        .switch-account {
+            font-size: 12px; color: var(--accent-color); cursor: pointer; margin-top: 8px;
+            background: none; border: none; text-decoration: underline;
+        }
+
+        /* ========== LOCAL LOGIN FORM ========== */
+        .local-login-form { text-align: left; margin-bottom: 8px; }
+        .local-login-form .form-group { margin-bottom: 14px; }
+        .local-login-form .form-label {
+            display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px;
+            color: var(--text-primary);
+        }
+        .local-login-form .form-input {
+            width: 100%; padding: 10px 12px; border: 1px solid var(--border-color); border-radius: 8px;
+            background: var(--input-bg); color: var(--text-primary); font-size: 14px; outline: none;
+            transition: border-color 0.2s;
+        }
+        .local-login-form .form-input:focus { border-color: var(--accent-color); }
+        .local-login-form .form-input::placeholder { color: var(--text-secondary); }
+        .local-login-btn {
+            width: 100%; padding: 12px; border: none; border-radius: 8px;
+            background: var(--button-bg); color: var(--button-text); font-size: 14px; font-weight: 600;
+            cursor: pointer; transition: opacity 0.2s;
+        }
+        .local-login-btn:hover { opacity: 0.9; }
+        .login-error {
+            color: var(--danger); font-size: 13px; margin-top: 8px; display: none;
+        }
+        .login-tabs {
+            display: flex; gap: 8px; margin-bottom: 20px; justify-content: center;
+        }
+        .login-tab {
+            padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 500;
+            cursor: pointer; border: 1px solid var(--border-color); background: transparent;
+            color: var(--text-secondary); transition: all 0.2s;
+        }
+        .login-tab.active {
+            background: var(--accent-color); color: white; border-color: var(--accent-color);
+        }
+        .login-tab-content { display: none; }
+        .login-tab-content.active { display: block; }
+
+        /* ========== APP ========== */
         .app { display: flex; height: 100vh; }
         .sidebar {
             width: 260px; background: var(--sidebar-bg); border-right: 1px solid var(--border-color);
@@ -55,17 +181,30 @@
         .sidebar-footer { padding: 12px; border-top: 1px solid var(--border-color); }
         .user-profile {
             display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 6px;
-            cursor: pointer; transition: background 0.2s;
+            cursor: pointer; transition: background 0.2s; position: relative;
         }
         .user-profile:hover { background: var(--sidebar-hover); }
-        .avatar {
-            width: 32px; height: 32px; border-radius: 50%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            display: flex; align-items: center; justify-content: center; color: white;
-            font-weight: 600; font-size: 14px;
+        .user-profile-menu {
+            position: absolute; bottom: calc(100% + 8px); left: 0; right: 0;
+            background: var(--main-bg); border: 1px solid var(--border-color); border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.15); padding: 8px; display: none; z-index: 200;
         }
-        .user-info { flex: 1; }
-        .user-name { font-size: 14px; font-weight: 500; }
+        .user-profile-menu.show { display: block; }
+        .user-profile-menu-item {
+            padding: 10px 12px; border-radius: 6px; cursor: pointer; font-size: 14px;
+            display: flex; align-items: center; gap: 10px; color: var(--text-primary);
+            transition: background 0.2s;
+        }
+        .user-profile-menu-item:hover { background: var(--sidebar-hover); }
+        .user-profile-menu-item.danger { color: var(--danger); }
+        .avatar {
+            width: 32px; height: 32px; border-radius: 50%; overflow: hidden;
+            display: flex; align-items: center; justify-content: center; color: white;
+            font-weight: 600; font-size: 14px; flex-shrink: 0;
+        }
+        .avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .user-info { flex: 1; min-width: 0; }
+        .user-name { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .user-plan { font-size: 12px; color: var(--text-secondary); }
         .main { flex: 1; display: flex; flex-direction: column; position: relative; min-width: 0; }
         .main-header {
@@ -140,22 +279,18 @@
             align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0;
         }
         .model-details { flex: 1; min-width: 0; }
-        .model-name-row {
-            display: flex; align-items: center; gap: 6px;
-        }
+        .model-name-row { display: flex; align-items: center; gap: 6px; }
         .model-name {
             font-size: 14px; font-weight: 500; color: var(--text-primary);
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
         .free-badge {
             font-size: 10px; padding: 2px 6px; border-radius: 4px;
-            background: var(--nvidia); color: white; font-weight: 600;
-            flex-shrink: 0;
+            background: var(--nvidia); color: white; font-weight: 600; flex-shrink: 0;
         }
         .or-badge {
             font-size: 10px; padding: 2px 6px; border-radius: 4px;
-            background: var(--openrouter); color: white; font-weight: 600;
-            flex-shrink: 0;
+            background: var(--openrouter); color: white; font-weight: 600; flex-shrink: 0;
         }
         .model-desc {
             font-size: 12px; color: var(--text-secondary);
@@ -200,8 +335,9 @@
         .message-content { max-width: 800px; margin: 0 auto; display: flex; gap: 16px; }
         .message-avatar {
             width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
-            display: flex; align-items: center; justify-content: center; font-size: 16px;
+            display: flex; align-items: center; justify-content: center; font-size: 16px; overflow: hidden;
         }
+        .message-avatar img { width: 100%; height: 100%; object-fit: cover; }
         .message.user .message-avatar { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
         .message.ai .message-avatar { background: var(--text-primary); color: var(--main-bg); }
         .message-body {
@@ -304,6 +440,8 @@
             .welcome-title { font-size: 24px; }
             .suggestions-grid { grid-template-columns: 1fr; }
             .model-dropdown { width: 90vw; left: -50px; }
+            .login-card { padding: 32px 24px; margin: 16px; }
+            .login-features { grid-template-columns: 1fr; }
         }
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -347,7 +485,88 @@
 <base target="_blank">
 </head>
 <body data-theme="light">
-    <div class="app">
+    <!-- ========== LOGIN SCREEN ========== -->
+    <div class="login-overlay" id="loginOverlay">
+        <div class="login-card" id="loginCard">
+            <div class="login-logo">🤖</div>
+            <h1 class="login-title">Bem-vindo de volta</h1>
+            <p class="login-subtitle">Acesse seu Chat AI com NVIDIA NIM + OpenRouter</p>
+
+            <div class="login-tabs">
+                <div class="login-tab active" data-tab="login">Entrar</div>
+                <div class="login-tab" data-tab="google">Google</div>
+                <div class="login-tab" data-tab="guest">Convidado</div>
+            </div>
+
+            <!-- TAB: LOGIN COM USUARIO/SENHA -->
+            <div class="login-tab-content active" id="tab-login">
+                <div class="local-login-form">
+                    <div class="form-group">
+                        <label class="form-label">Usuario</label>
+                        <input type="text" class="form-input" id="loginUsername" placeholder="Digite seu usuario" autocomplete="username">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Senha</label>
+                        <input type="password" class="form-input" id="loginPassword" placeholder="Digite sua senha" autocomplete="current-password">
+                    </div>
+                    <button class="local-login-btn" id="btnLocalLogin">Entrar</button>
+                    <div class="login-error" id="loginError">Usuario ou senha incorretos</div>
+                </div>
+                <div class="login-footer" style="margin-top: 16px;">
+                    <strong>Usuario padrao:</strong> Moura / 1234<br>
+                    <small>Voce pode adicionar mais usuarios nas configuracoes</small>
+                </div>
+            </div>
+
+            <!-- TAB: GOOGLE -->
+            <div class="login-tab-content" id="tab-google">
+                <div id="loginGoogleInitial">
+                    <div class="google-btn-container" id="googleBtnContainer"></div>
+                    <div class="login-divider">ou</div>
+                    <button class="guest-btn" id="btnGoogleToGuest">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 6px;">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                        Entrar como Convidado
+                    </button>
+                </div>
+                <div id="loginGoogleResume" style="display: none;">
+                    <div class="user-info-login" id="resumeGoogleUserInfo">
+                        <img src="" alt="Avatar" id="resumeGoogleAvatar">
+                        <div class="user-info-login-text">
+                            <div class="user-info-login-name" id="resumeGoogleName"></div>
+                            <div class="user-info-login-email" id="resumeGoogleEmail"></div>
+                        </div>
+                    </div>
+                    <button class="continue-btn" id="btnGoogleContinue">Continuar como <span id="continueGoogleName"></span></button>
+                    <button class="switch-account" id="btnGoogleSwitch">Usar outra conta</button>
+                </div>
+            </div>
+
+            <!-- TAB: CONVIDADO -->
+            <div class="login-tab-content" id="tab-guest">
+                <div class="login-features" style="margin-bottom: 20px;">
+                    <div class="login-feature">
+                        <div class="login-feature-icon">🚀</div>
+                        <span>Acesso rapido<br><small>Sem cadastro</small></span>
+                    </div>
+                    <div class="login-feature">
+                        <div class="login-feature-icon">💾</div>
+                        <span>Historico local<br><small>Salvo no navegador</small></span>
+                    </div>
+                </div>
+                <button class="continue-btn" id="btnGuestContinue">Entrar como Convidado</button>
+                <div class="login-footer" style="margin-top: 16px;">
+                    Seus dados ficam apenas neste navegador.<br>
+                    Para sincronizar entre dispositivos, use login Google.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== APP ========== -->
+    <div class="app" id="app" style="display: none;">
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <button class="new-chat-btn" id="btnNewChat">
@@ -372,11 +591,24 @@
                     </svg>
                     Configurar APIs
                 </div>
-                <div class="user-profile">
-                    <div class="avatar" id="userAvatar">U</div>
+                <div class="user-profile" id="userProfile">
+                    <div class="avatar" id="userAvatar">
+                        <span id="userAvatarText">U</span>
+                        <img id="userAvatarImg" src="" alt="" style="display: none;">
+                    </div>
                     <div class="user-info">
                         <div class="user-name" id="userName">Usuario</div>
-                        <div class="user-plan">NVIDIA NIM + OpenRouter</div>
+                        <div class="user-plan" id="userEmail">NVIDIA NIM + OpenRouter</div>
+                    </div>
+                    <div class="user-profile-menu" id="userProfileMenu">
+                        <div class="user-profile-menu-item" id="btnLogout">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                                <polyline points="16 17 21 12 16 7"></polyline>
+                                <line x1="21" y1="12" x2="9" y2="12"></line>
+                            </svg>
+                            Sair da conta
+                        </div>
                     </div>
                 </div>
             </div>
@@ -520,6 +752,24 @@
                     </div>
                 </div>
 
+                <div class="provider-section">
+                    <div class="provider-header">
+                        <h3>👤 Usuarios Locais</h3>
+                        <span class="provider-tag free">LOGIN PADRAO</span>
+                    </div>
+                    <div class="proxy-info">
+                        <strong>Usuario padrao:</strong> Moura / 1234<br><br>
+                        Adicione mais usuarios abaixo (um por linha, formato: usuario:senha)
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Usuarios (usuario:senha)</label>
+                        <textarea class="form-input" id="localUsers" rows="4" placeholder="moura:1234
+joao:senha123
+maria:abc456" style="resize: vertical; font-family: monospace; font-size: 13px;"></textarea>
+                        <div class="form-hint">Um usuario por linha. Formato: <code>usuario:senha</code></div>
+                    </div>
+                </div>
+
                 <div class="form-group">
                     <label class="form-label">Seu Nome</label>
                     <input type="text" class="form-input" id="userNameInput" placeholder="Christian">
@@ -540,6 +790,14 @@
     <script>
     (function() {
         'use strict';
+
+        // ========== GOOGLE CLIENT ID ==========
+        var GOOGLE_CLIENT_ID = 'SEU_CLIENT_ID_AQUI.apps.googleusercontent.com';
+
+        // ========== DEFAULT USERS ==========
+        var DEFAULT_USERS = [
+            { username: 'moura', password: '1234', name: 'Moura' }
+        ];
 
         // ========== NVIDIA MODELS ==========
         var NVIDIA_MODELS = [
@@ -646,6 +904,10 @@
         var chatHistory = [];
         var isTyping = false;
         var currentChatId = null;
+        var googleUser = null;
+        var localUser = null;
+        var isGuest = false;
+        var localUsers = [];
 
         var config = {
             nvidia: '',
@@ -659,13 +921,269 @@
 
         var $ = function(id) { return document.getElementById(id); };
 
-        // ========== INIT ==========
-        function init() {
+        // ========== AUTH / LOGIN ==========
+        function initAuth() {
+            loadLocalUsers();
+            var savedUser = localStorage.getItem('googleUser');
+            var savedLocalUser = localStorage.getItem('localUser');
+            var savedGuest = localStorage.getItem('isGuest');
+
+            if (savedUser) {
+                try {
+                    googleUser = JSON.parse(savedUser);
+                    showResumeScreen('google');
+                } catch(e) {
+                    localStorage.removeItem('googleUser');
+                    showLoginScreen();
+                }
+            } else if (savedLocalUser) {
+                try {
+                    localUser = JSON.parse(savedLocalUser);
+                    showResumeScreen('local');
+                } catch(e) {
+                    localStorage.removeItem('localUser');
+                    showLoginScreen();
+                }
+            } else if (savedGuest === 'true') {
+                isGuest = true;
+                showResumeScreen('guest');
+            } else {
+                showLoginScreen();
+            }
+        }
+
+        function loadLocalUsers() {
+            var saved = localStorage.getItem('localUsersList');
+            if (saved) {
+                try {
+                    localUsers = JSON.parse(saved);
+                } catch(e) {
+                    localUsers = DEFAULT_USERS.slice();
+                }
+            } else {
+                localUsers = DEFAULT_USERS.slice();
+            }
+        }
+
+        function saveLocalUsers() {
+            localStorage.setItem('localUsersList', JSON.stringify(localUsers));
+        }
+
+        function showLoginScreen() {
+            switchLoginTab('login');
+            $('loginGoogleInitial').style.display = 'block';
+            $('loginGoogleResume').style.display = 'none';
+            renderGoogleButton();
+        }
+
+        function showResumeScreen(type) {
+            if (type === 'google') {
+                switchLoginTab('google');
+                $('loginGoogleInitial').style.display = 'none';
+                $('loginGoogleResume').style.display = 'block';
+                $('resumeGoogleAvatar').src = googleUser.picture || '';
+                $('resumeGoogleName').textContent = googleUser.name || 'Usuario';
+                $('resumeGoogleEmail').textContent = googleUser.email || '';
+                $('continueGoogleName').textContent = googleUser.given_name || googleUser.name || 'Usuario';
+            } else if (type === 'local') {
+                switchLoginTab('login');
+                $('loginUsername').value = localUser.username || '';
+                $('loginPassword').value = '';
+                $('loginError').style.display = 'none';
+                // Show a hint that user can resume
+                $('loginError').textContent = 'Bem-vindo de volta, ' + (localUser.name || localUser.username) + '! Digite sua senha para continuar.';
+                $('loginError').style.display = 'block';
+                $('loginError').style.color = 'var(--accent-color)';
+            } else if (type === 'guest') {
+                switchLoginTab('guest');
+            }
+        }
+
+        function switchLoginTab(tabName) {
+            document.querySelectorAll('.login-tab').forEach(function(tab) {
+                tab.classList.toggle('active', tab.getAttribute('data-tab') === tabName);
+            });
+            document.querySelectorAll('.login-tab-content').forEach(function(content) {
+                content.classList.toggle('active', content.id === 'tab-' + tabName);
+            });
+        }
+
+        function renderGoogleButton() {
+            if (!window.google || !window.google.accounts) {
+                setTimeout(renderGoogleButton, 100);
+                return;
+            }
+
+            if (GOOGLE_CLIENT_ID === 'SEU_CLIENT_ID_AQUI.apps.googleusercontent.com') {
+                $('googleBtnContainer').innerHTML = '<div style="padding: 12px; background: var(--sidebar-hover); border-radius: 8px; font-size: 13px; color: var(--text-secondary);">⚠️ Configure seu Client ID no codigo<br><small>Substitua GOOGLE_CLIENT_ID na linha 1 do script</small></div>';
+                return;
+            }
+
+            try {
+                google.accounts.id.initialize({
+                    client_id: GOOGLE_CLIENT_ID,
+                    callback: handleGoogleResponse,
+                    auto_select: false,
+                    cancel_on_tap_outside: true
+                });
+
+                google.accounts.id.renderButton(
+                    $('googleBtnContainer'),
+                    { 
+                        theme: document.body.getAttribute('data-theme') === 'dark' ? 'filled_black' : 'outline',
+                        size: 'large', 
+                        width: '100%',
+                        text: 'signin_with',
+                        shape: 'rectangular',
+                        logo_alignment: 'center'
+                    }
+                );
+            } catch(e) {
+                console.error('Erro ao renderizar botao Google:', e);
+            }
+        }
+
+        function handleGoogleResponse(response) {
+            if (response.credential) {
+                var payload = parseJwt(response.credential);
+                if (payload) {
+                    googleUser = {
+                        sub: payload.sub,
+                        name: payload.name,
+                        given_name: payload.given_name,
+                        family_name: payload.family_name,
+                        picture: payload.picture,
+                        email: payload.email,
+                        email_verified: payload.email_verified
+                    };
+                    localStorage.setItem('googleUser', JSON.stringify(googleUser));
+                    localStorage.removeItem('localUser');
+                    localStorage.removeItem('isGuest');
+                    localUser = null;
+                    isGuest = false;
+                    enterApp();
+                }
+            }
+        }
+
+        function parseJwt(token) {
+            try {
+                var base64Url = token.split('.')[1];
+                var base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                var jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+                return JSON.parse(jsonPayload);
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function localLogin() {
+            var username = $('loginUsername').value.trim().toLowerCase();
+            var password = $('loginPassword').value;
+
+            if (!username || !password) {
+                $('loginError').textContent = 'Preencha usuario e senha';
+                $('loginError').style.color = 'var(--danger)';
+                $('loginError').style.display = 'block';
+                return;
+            }
+
+            var found = localUsers.find(function(u) {
+                return u.username.toLowerCase() === username && u.password === password;
+            });
+
+            if (found) {
+                localUser = {
+                    username: found.username,
+                    name: found.name || found.username,
+                    type: 'local'
+                };
+                localStorage.setItem('localUser', JSON.stringify(localUser));
+                localStorage.removeItem('googleUser');
+                localStorage.removeItem('isGuest');
+                googleUser = null;
+                isGuest = false;
+                $('loginError').style.display = 'none';
+                enterApp();
+            } else {
+                $('loginError').textContent = 'Usuario ou senha incorretos';
+                $('loginError').style.color = 'var(--danger)';
+                $('loginError').style.display = 'block';
+                $('loginPassword').value = '';
+                $('loginPassword').focus();
+            }
+        }
+
+        function enterApp() {
+            $('loginOverlay').classList.add('hidden');
+            setTimeout(function() {
+                $('loginOverlay').style.display = 'none';
+                $('app').style.display = 'flex';
+                initApp();
+            }, 500);
+        }
+
+        function logout() {
+            googleUser = null;
+            localUser = null;
+            isGuest = false;
+            localStorage.removeItem('googleUser');
+            localStorage.removeItem('localUser');
+            localStorage.removeItem('isGuest');
+
+            if (window.google && window.google.accounts) {
+                google.accounts.id.disableAutoSelect();
+            }
+
+            location.reload();
+        }
+
+        function guestLogin() {
+            isGuest = true;
+            localStorage.setItem('isGuest', 'true');
+            localStorage.removeItem('googleUser');
+            localStorage.removeItem('localUser');
+            googleUser = null;
+            localUser = null;
+            enterApp();
+        }
+
+        // ========== APP INIT ==========
+        function initApp() {
             loadConfig();
+            updateUserProfile();
             updateUI();
             renderModelList();
             bindEvents();
             checkApiStatus();
+        }
+
+        function updateUserProfile() {
+            if (googleUser) {
+                config.userName = googleUser.given_name || googleUser.name || 'Usuario';
+                $('userAvatarText').style.display = 'none';
+                $('userAvatarImg').src = googleUser.picture || '';
+                $('userAvatarImg').style.display = 'block';
+                $('userAvatarImg').alt = googleUser.name || '';
+                $('userName').textContent = googleUser.name || 'Usuario';
+                $('userEmail').textContent = googleUser.email || '';
+            } else if (localUser) {
+                config.userName = localUser.name || localUser.username || 'Usuario';
+                $('userAvatarText').style.display = 'flex';
+                $('userAvatarImg').style.display = 'none';
+                $('userAvatarText').textContent = (localUser.name || localUser.username || 'U').charAt(0).toUpperCase();
+                $('userName').textContent = localUser.name || localUser.username || 'Usuario';
+                $('userEmail').textContent = 'Usuario local';
+            } else if (isGuest) {
+                $('userAvatarText').style.display = 'flex';
+                $('userAvatarImg').style.display = 'none';
+                $('userAvatarText').textContent = (config.userName || 'C').charAt(0).toUpperCase();
+                $('userName').textContent = config.userName || 'Convidado';
+                $('userEmail').textContent = 'Modo convidado';
+            }
+            $('welcomeName').textContent = config.userName || 'Christian';
         }
 
         function bindEvents() {
@@ -704,6 +1222,9 @@
                 if (!e.target.closest('.model-selector')) {
                     $('modelDropdown').classList.remove('show');
                 }
+                if (!e.target.closest('.user-profile')) {
+                    $('userProfileMenu').classList.remove('show');
+                }
             });
 
             $('settingsModal').addEventListener('click', function(e) {
@@ -716,6 +1237,31 @@
                     sendSuggestion(text);
                 });
             });
+
+            // Login events
+            document.querySelectorAll('.login-tab').forEach(function(tab) {
+                tab.addEventListener('click', function() {
+                    switchLoginTab(this.getAttribute('data-tab'));
+                });
+            });
+
+            $('btnLocalLogin').addEventListener('click', localLogin);
+            $('loginPassword').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') localLogin();
+            });
+            $('btnGoogleToGuest').addEventListener('click', guestLogin);
+            $('btnGuestContinue').addEventListener('click', guestLogin);
+            $('btnGoogleContinue').addEventListener('click', enterApp);
+            $('btnGoogleSwitch').addEventListener('click', function() {
+                if (window.google && window.google.accounts) {
+                    google.accounts.id.prompt();
+                }
+                showLoginScreen();
+            });
+            $('userProfile').addEventListener('click', function() {
+                $('userProfileMenu').classList.toggle('show');
+            });
+            $('btnLogout').addEventListener('click', logout);
         }
 
         // ========== CONFIG ==========
@@ -745,6 +1291,12 @@
                     }
                 } catch(e) {}
             }
+
+            // Load local users into settings textarea
+            var usersText = localUsers.map(function(u) {
+                return u.username + ':' + u.password;
+            }).join('\n');
+            $('localUsers').value = usersText;
         }
 
         function saveSettings() {
@@ -755,7 +1307,35 @@
             config.siteUrl = $('siteUrl').value.trim();
             config.appName = $('appName').value.trim() || 'ChatGPT Clone';
 
+            // Parse local users from textarea
+            var usersText = $('localUsers').value.trim();
+            if (usersText) {
+                localUsers = [];
+                usersText.split('\n').forEach(function(line) {
+                    line = line.trim();
+                    if (line && line.includes(':')) {
+                        var parts = line.split(':');
+                        if (parts.length >= 2) {
+                            var username = parts[0].trim();
+                            var password = parts.slice(1).join(':').trim();
+                            if (username && password) {
+                                localUsers.push({
+                                    username: username,
+                                    password: password,
+                                    name: username.charAt(0).toUpperCase() + username.slice(1)
+                                });
+                            }
+                        }
+                    }
+                });
+                if (localUsers.length === 0) {
+                    localUsers = DEFAULT_USERS.slice();
+                }
+                saveLocalUsers();
+            }
+
             localStorage.setItem('chatConfigV4', JSON.stringify(config));
+            updateUserProfile();
             updateUI();
             closeSettings();
             showToast('Configuracoes salvas!');
@@ -763,9 +1343,6 @@
         }
 
         function updateUI() {
-            $('userName').textContent = config.userName;
-            $('welcomeName').textContent = config.userName;
-            $('userAvatar').textContent = config.userName.charAt(0).toUpperCase();
             $('currentModel').textContent = currentModel.name;
             $('providerBadge').textContent = currentProvider === 'nvidia' ? 'NVIDIA' : 'OpenRouter';
             $('providerBadge').className = 'provider-badge ' + (currentProvider === 'nvidia' ? 'nvidia' : 'openrouter');
@@ -933,7 +1510,7 @@
 
                 providerModels.forEach(function(m) {
                     var isSelected = currentModel.id === m.id;
-                    var safeName = m.name.replace(/'/g, "\\'");
+                    var safeName = m.name.replace(/'/g, "\'");
                     html += '<div class="model-option ' + (isSelected ? 'selected' : '') + '" data-model-id="' + m.id + '" data-model-name="' + safeName + '" data-model-provider="' + m.provider + '">' +
                         '<div class="model-icon" style="background: ' + m.color + '20; color: ' + m.color + ';">' + m.icon + '</div>' +
                         '<div class="model-details">' +
@@ -976,7 +1553,7 @@
             } else {
                 filtered.forEach(function(m) {
                     var isSelected = currentModel.id === m.id;
-                    var safeName = m.name.replace(/'/g, "\\'");
+                    var safeName = m.name.replace(/'/g, "\'");
                     html += '<div class="model-option ' + (isSelected ? 'selected' : '') + '" data-model-id="' + m.id + '" data-model-name="' + safeName + '" data-model-provider="' + m.provider + '">' +
                         '<div class="model-icon" style="background: ' + m.color + '20; color: ' + m.color + ';">' + m.icon + '</div>' +
                         '<div class="model-details">' +
@@ -1189,75 +1766,135 @@
 
             if (provider === 'nvidia') {
                 if (status === 402 || msg.includes('credits') || msg.includes('payment') || msg.includes('quota')) {
-                    return '❌ **Creditos NVIDIA esgotados**\n\n' +
-                        'Voce usou seus 1000 creditos gratuitos.\n\n' +
-                        '**Opcoes:**\n' +
-                        '1. Solicite mais creditos em [build.nvidia.com](https://build.nvidia.com)\n' +
-                        '2. Mude para **OpenRouter** e use modelos `:free`\n' +
+                    return '❌ **Creditos NVIDIA esgotados**
+
+' +
+                        'Voce usou seus 1000 creditos gratuitos.
+
+' +
+                        '**Opcoes:**
+' +
+                        '1. Solicite mais creditos em [build.nvidia.com](https://build.nvidia.com)
+' +
+                        '2. Mude para **OpenRouter** e use modelos `:free`
+' +
                         '3. Use modelos menores (consomem menos creditos)';
                 }
                 if (status === 429 || msg.includes('rate limit') || msg.includes('429')) {
-                    return '⏳ **Limite de requisicoes NVIDIA**\n\n' +
-                        'Limite: 40 req/min por modelo.\n' +
+                    return '⏳ **Limite de requisicoes NVIDIA**
+
+' +
+                        'Limite: 40 req/min por modelo.
+' +
                         'Aguarde alguns segundos e tente novamente.';
                 }
                 if (status === 401 || msg.includes('unauthorized') || msg.includes('invalid key')) {
-                    return '🔑 **API Key NVIDIA invalida**\n\n' +
-                        'Verifique sua key em [build.nvidia.com/settings/api-keys](https://build.nvidia.com/settings/api-keys)\n' +
+                    return '🔑 **API Key NVIDIA invalida**
+
+' +
+                        'Verifique sua key em [build.nvidia.com/settings/api-keys](https://build.nvidia.com/settings/api-keys)
+' +
                         'Formato: `nvapi-...`';
                 }
                 if (status === 404 || msg.includes('not found')) {
-                    return '❌ **Modelo nao encontrado no NVIDIA**\n\n' +
-                        'Modelo: `' + currentModel.id + '`\n\n' +
+                    return '❌ **Modelo nao encontrado no NVIDIA**
+
+' +
+                        'Modelo: `' + currentModel.id + '`
+
+' +
                         'Verifique se o modelo esta disponivel em [build.nvidia.com/models](https://build.nvidia.com/models)';
                 }
                 if (status === 503 || msg.includes('overloaded')) {
-                    return '🔧 **NVIDIA DGX Cloud sobrecarregado**\n\n' +
+                    return '🔧 **NVIDIA DGX Cloud sobrecarregado**
+
+' +
                         'Tente novamente em alguns instantes ou use outro modelo.';
                 }
                 if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('CORS')) {
-                    return '❌ **Erro de conexao com o Proxy**\n\n' +
-                        'Verifique se a URL do proxy esta correta e acessivel.\n\n' +
-                        'URL configurada: `' + config.nvidiaProxy + '`\n\n' +
-                        '**Dicas:**\n' +
-                        '- Verifique se o proxy esta rodando\n' +
-                        '- Confira a URL nas configuracoes\n' +
+                    return '❌ **Erro de conexao com o Proxy**
+
+' +
+                        'Verifique se a URL do proxy esta correta e acessivel.
+
+' +
+                        'URL configurada: `' + config.nvidiaProxy + '`
+
+' +
+                        '**Dicas:**
+' +
+                        '- Verifique se o proxy esta rodando
+' +
+                        '- Confira a URL nas configuracoes
+' +
                         '- Tente usar OpenRouter enquanto isso';
                 }
-                return '❌ **Erro NVIDIA** (' + status + ')\n\n' + msg;
+                return '❌ **Erro NVIDIA** (' + status + ')
+
+' + msg;
             }
 
             if (status === 402 || msg.includes('402') || msg.includes('credits')) {
-                return '❌ **Sem creditos no OpenRouter**\n\n' +
-                    'Adicione creditos em [openrouter.ai/credits](https://openrouter.ai/credits) ou use um modelo **Free** (com 🆓).\n\n' +
-                    'Modelos gratuitos recomendados:\n' +
-                    '- `meta-llama/llama-3.2-3b-instruct:free`\n' +
-                    '- `google/gemini-1.5-flash-8b:free`\n' +
-                    '- `deepseek/deepseek-chat:free`\n' +
+                return '❌ **Sem creditos no OpenRouter**
+
+' +
+                    'Adicione creditos em [openrouter.ai/credits](https://openrouter.ai/credits) ou use um modelo **Free** (com 🆓).
+
+' +
+                    'Modelos gratuitos recomendados:
+' +
+                    '- `meta-llama/llama-3.2-3b-instruct:free`
+' +
+                    '- `google/gemini-1.5-flash-8b:free`
+' +
+                    '- `deepseek/deepseek-chat:free`
+' +
                     '- `nvidia/nemotron-3-super-120b-a12b:free`';
             }
             if (status === 404 || msg.includes('404')) {
-                return '❌ **Modelo nao encontrado** (`' + currentModel.id + '`)\n\n' +
+                return '❌ **Modelo nao encontrado** (`' + currentModel.id + '`)
+
+' +
                     'Clique em 🔄 **Atualizar lista de modelos** para sincronizar.';
             }
             if (status === 429 || msg.includes('429')) {
-                return '⏳ **Muitas requisicoes**\n\n' +
+                return '⏳ **Muitas requisicoes**
+
+' +
                     'Aguarde alguns segundos e tente novamente.';
             }
             if (status === 401 || msg.includes('401')) {
-                return '🔑 **API Key OpenRouter invalida**\n\n' +
+                return '🔑 **API Key OpenRouter invalida**
+
+' +
                     'Verifique em [openrouter.ai/keys](https://openrouter.ai/keys)';
             }
-            return '❌ **Erro** (' + status + ')\n\n' + msg;
+            return '❌ **Erro** (' + status + ')
+
+' + msg;
         }
 
         function addMessage(role, content) {
             var area = $('messagesArea');
             var msgDiv = document.createElement('div');
             msgDiv.className = 'message ' + role;
+
+            var avatarContent;
+            if (role === 'user') {
+                if (googleUser && googleUser.picture) {
+                    avatarContent = '<img src="' + googleUser.picture + '" alt="Avatar">';
+                } else if (localUser) {
+                    avatarContent = (localUser.name || localUser.username || 'U').charAt(0).toUpperCase();
+                } else {
+                    avatarContent = (config.userName || 'U').charAt(0).toUpperCase();
+                }
+            } else {
+                avatarContent = '🤖';
+            }
+
             msgDiv.innerHTML =
                 '<div class="message-content">' +
-                    '<div class="message-avatar">' + (role === 'user' ? config.userName.charAt(0).toUpperCase() : '🤖') + '</div>' +
+                    '<div class="message-avatar">' + avatarContent + '</div>' +
                     '<div class="message-body">' + formatContent(content) + '</div>' +
                 '</div>';
             area.appendChild(msgDiv);
@@ -1266,12 +1903,14 @@
 
         function formatContent(text) {
             return text
-                .replace(/```(\w+)?\n([\s\S]*?)```/g, function(match, lang, code) {
+                .replace(/```(\w+)?
+([\s\S]*?)```/g, function(match, lang, code) {
                     return '<div class="code-wrapper"><div class="code-header"><span>' + (lang || '') + '</span><button class="btn-copy-code">Copiar</button></div><pre class="code-block"><code>' + escapeHtml(code) + '</code></pre></div>';
                 })
                 .replace(/`([^`]+)`/g, '<code style="background: var(--sidebar-hover); padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 13px;">$1</code>')
                 .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                .replace(/\n/g, '<br>');
+                .replace(/
+/g, '<br>');
         }
 
         function escapeHtml(text) {
@@ -1313,6 +1952,10 @@
             config.theme = next;
             localStorage.setItem('chatConfigV4', JSON.stringify(config));
             $('themeIcon').textContent = next === 'dark' ? '☀️' : '🌙';
+
+            if (!googleUser && !localUser && !isGuest) {
+                renderGoogleButton();
+            }
         }
 
         function openSettings() {
@@ -1324,7 +1967,9 @@
         }
 
         function shareChat() {
-            var text = messages.map(function(m) { return m.role + ': ' + m.content; }).join('\n\n');
+            var text = messages.map(function(m) { return m.role + ': ' + m.content; }).join('
+
+');
             navigator.clipboard.writeText(text).then(function() {
                 showToast('Conversa copiada!');
             });
@@ -1377,7 +2022,7 @@
             }
         });
 
-        document.addEventListener('DOMContentLoaded', init);
+        document.addEventListener('DOMContentLoaded', initAuth);
     })();
     </script>
 </body>
