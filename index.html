@@ -85,6 +85,7 @@
         }
         .provider-badge.nvidia { background: var(--nvidia); color: white; }
         .provider-badge.openrouter { background: var(--openrouter); color: white; }
+        .provider-badge.nvidia-proxy { background: var(--warning); color: white; }
         .model-selector { position: relative; }
         .model-btn {
             display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: none;
@@ -149,6 +150,11 @@
         .free-badge {
             font-size: 10px; padding: 2px 6px; border-radius: 4px;
             background: var(--nvidia); color: white; font-weight: 600;
+            flex-shrink: 0;
+        }
+        .or-badge {
+            font-size: 10px; padding: 2px 6px; border-radius: 4px;
+            background: var(--openrouter); color: white; font-weight: 600;
             flex-shrink: 0;
         }
         .model-desc {
@@ -281,6 +287,16 @@
         }
         .provider-tag.free { background: var(--nvidia); color: white; }
         .provider-tag.paid { background: var(--warning); color: white; }
+        .proxy-info {
+            background: rgba(16, 163, 127, 0.1); border: 1px solid var(--accent-color);
+            border-radius: 8px; padding: 12px; margin-bottom: 16px; font-size: 13px;
+            color: var(--text-primary); line-height: 1.5;
+        }
+        .proxy-info strong { color: var(--accent-color); }
+        .proxy-info code {
+            background: var(--sidebar-hover); padding: 2px 6px; border-radius: 4px;
+            font-family: monospace; font-size: 12px;
+        }
         @media (max-width: 768px) {
             .sidebar { position: fixed; left: -260px; z-index: 100; height: 100vh; }
             .sidebar.open { left: 0; box-shadow: 2px 0 10px rgba(0,0,0,0.3); }
@@ -326,6 +342,7 @@
         .api-status-dot.offline { background: var(--danger); }
         .api-status-dot.nvidia { background: var(--nvidia); }
         .api-status-dot.openrouter { background: var(--openrouter); }
+        .api-status-dot.proxy { background: var(--warning); }
     </style>
 <base target="_blank">
 </head>
@@ -393,7 +410,7 @@
                 <div class="header-right">
                     <div class="api-status" id="apiStatus">
                         <span class="api-status-dot nvidia" id="apiStatusDot"></span>
-                        <span id="apiStatusText">NVIDIA NIM</span>
+                        <span id="apiStatusText">NVIDIA</span>
                     </div>
                     <button class="icon-btn tooltip" data-tooltip="Compartilhar" id="btnShare">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -464,25 +481,42 @@
             <div class="modal-body">
                 <div class="provider-section">
                     <div class="provider-header">
-                        <h3>🟢 NVIDIA NIM</h3>
-                        <span class="provider-tag free">1000+ CREDITOS GRATIS</span>
+                        <h3>🟢 NVIDIA NIM (Prioridade)</h3>
+                        <span class="provider-tag free">1000 CREDITOS GRATIS</span>
+                    </div>
+                    <div class="proxy-info">
+                        <strong>⚠️ NVIDIA requer Proxy!</strong><br><br>
+                        A API da NVIDIA bloqueia chamadas diretas do navegador (CORS).<br><br>
+                        <strong>Opcoes de Proxy:</strong><br>
+                        1. <strong>Cloudflare Worker</strong> (gratis, 100k req/dia)<br>
+                        2. <strong>Vercel Edge</strong> (gratis, 1M req/mes)<br>
+                        3. <strong>Node.js local</strong> (localhost:3000)<br><br>
+                        <strong>Como usar:</strong><br>
+                        - Deploy o proxy (arquivos fornecidos)<br>
+                        - Cole a URL do proxy abaixo<br>
+                        - Cole sua API Key da NVIDIA
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">URL do Proxy NVIDIA</label>
+                        <input type="text" class="form-input" id="nvidiaProxyUrl" placeholder="https://seu-proxy.workers.dev">
+                        <div class="form-hint">Ex: https://nvidia-proxy.seunome.workers.dev (Cloudflare) ou http://localhost:3000 (local)</div>
                     </div>
                     <div class="form-group">
                         <label class="form-label">NVIDIA API Key</label>
                         <input type="password" class="form-input" id="apiKeyNvidia" placeholder="nvapi-...">
-                        <div class="form-hint">Obtenha em <a href="https://build.nvidia.com/settings/api-keys" target="_blank">build.nvidia.com/settings/api-keys</a>. Sem cartao de credito. 1000 creditos iniciais + 40 req/min.</div>
+                        <div class="form-hint">Obtenha em <a href="https://build.nvidia.com/settings/api-keys" target="_blank">build.nvidia.com/settings/api-keys</a></div>
                     </div>
                 </div>
 
                 <div class="provider-section">
                     <div class="provider-header">
-                        <h3>🔵 OpenRouter</h3>
+                        <h3>🔵 OpenRouter (Fallback)</h3>
                         <span class="provider-tag paid">PAGO / FREE LIMITADO</span>
                     </div>
                     <div class="form-group">
                         <label class="form-label">OpenRouter API Key</label>
                         <input type="password" class="form-input" id="apiKeyOpenRouter" placeholder="sk-or-v1-...">
-                        <div class="form-hint">Obtenha em <a href="https://openrouter.ai/keys" target="_blank">openrouter.ai/keys</a>. Alguns modelos gratuitos limitados.</div>
+                        <div class="form-hint">Obtenha em <a href="https://openrouter.ai/keys" target="_blank">openrouter.ai/keys</a>. Funciona sem proxy.</div>
                     </div>
                 </div>
 
@@ -507,57 +541,44 @@
     (function() {
         'use strict';
 
-        // ========== NVIDIA MODELS (verified from build.nvidia.com) ==========
+        // ========== NVIDIA MODELS ==========
         var NVIDIA_MODELS = [
-            // NVIDIA Nemotron (proprietary, optimized)
             { id: "nvidia/nemotron-3-ultra-550b-a55b", name: "Nemotron 3 Ultra 550B", provider: "nvidia", icon: "🟢", color: "#76b900", free: true, desc: "Agente, 550B params, 55B ativos" },
             { id: "nvidia/nemotron-3-super-120b-a12b", name: "Nemotron 3 Super 120B", provider: "nvidia", icon: "🟢", color: "#76b900", free: true, desc: "Agente, 120B params, 12B ativos" },
             { id: "nvidia/nemotron-3-nano-30b-a3b", name: "Nemotron 3 Nano 30B", provider: "nvidia", icon: "🟢", color: "#76b900", free: true, desc: "Leve, 30B params, 3B ativos" },
             { id: "nvidia/llama-3.1-nemotron-ultra-253b-v1", name: "Nemotron Ultra 253B", provider: "nvidia", icon: "🟢", color: "#76b900", free: true, desc: "Llama-based, 253B params" },
             { id: "nvidia/nemotron-nano-2-vl", name: "Nemotron Nano 2 VL", provider: "nvidia", icon: "👁️", color: "#76b900", free: true, desc: "Multimodal: Visao + Texto + Video" },
             { id: "nvidia/cosmos3-nano-reasoner", name: "Cosmos 3 Nano Reasoner", provider: "nvidia", icon: "🧠", color: "#76b900", free: true, desc: "Physical AI, raciocinio" },
-            // DeepSeek
             { id: "deepseek-ai/deepseek-r1", name: "DeepSeek R1", provider: "deepseek", icon: "🔬", color: "#4f46e5", free: true, desc: "Raciocinio, 671B MoE" },
             { id: "deepseek-ai/deepseek-v4-pro", name: "DeepSeek V4 Pro", provider: "deepseek", icon: "🐋", color: "#4f46e5", free: true, desc: "Chat avancado, codigo" },
             { id: "deepseek-ai/deepseek-v3.1", name: "DeepSeek V3.1", provider: "deepseek", icon: "💻", color: "#4f46e5", free: true, desc: "Chat e codigo" },
-            // Meta Llama
-            { id: "meta/llama-3.1-405b-instruct", name: "Llama 3.1 405B", provider: "meta", icon: "🦙", color: "#0668e1", free: true, desc: "Maior modelo Llama, 128K context" },
+            { id: "meta/llama-3.1-405b-instruct", name: "Llama 3.1 405B", provider: "meta", icon: "🦙", color: "#0668e1", free: true, desc: "Maior Llama, 128K context" },
             { id: "meta/llama-3.1-70b-instruct", name: "Llama 3.1 70B", provider: "meta", icon: "🦙", color: "#0668e1", free: true, desc: "Equilibrio qualidade/velocidade" },
-            { id: "meta/llama-3.3-70b-instruct", name: "Llama 3.3 70B", provider: "meta", icon: "🦙", color: "#0668e1", free: true, desc: "Versao atualizada do 70B" },
+            { id: "meta/llama-3.3-70b-instruct", name: "Llama 3.3 70B", provider: "meta", icon: "🦙", color: "#0668e1", free: true, desc: "Versao atualizada" },
             { id: "meta/llama-3.1-8b-instruct", name: "Llama 3.1 8B", provider: "meta", icon: "🦙", color: "#0668e1", free: true, desc: "Rapido e leve" },
             { id: "meta/llama-3.2-3b-instruct", name: "Llama 3.2 3B", provider: "meta", icon: "🦙", color: "#0668e1", free: true, desc: "Multimodal, muito leve" },
-            // Mistral
             { id: "mistralai/mistral-large-2-instruct", name: "Mistral Large 2", provider: "mistral", icon: "🌊", color: "#ff7000", free: true, desc: "128K context, multilingue" },
             { id: "mistralai/mistral-small-3-1-24b", name: "Mistral Small 3.1 24B", provider: "mistral", icon: "🌊", color: "#ff7000", free: true, desc: "Leve, 24B params" },
             { id: "mistralai/mistral-nemo", name: "Mistral Nemo", provider: "mistral", icon: "🌊", color: "#ff7000", free: true, desc: "12B params, eficiente" },
-            // Google
             { id: "google/gemma-4-31b", name: "Gemma 4 31B", provider: "google", icon: "🔮", color: "#4285f4", free: true, desc: "Google open source, 128K context" },
             { id: "google/gemma-2-9b-it", name: "Gemma 2 9B", provider: "google", icon: "🔮", color: "#4285f4", free: true, desc: "Leve, 9B params" },
             { id: "google/gemma-2-27b-it", name: "Gemma 2 27B", provider: "google", icon: "🔮", color: "#4285f4", free: true, desc: "Medio, 27B params" },
-            // Qwen
+            { id: "qwen/qwen3-235b-a22b", name: "Qwen 3 235B", provider: "qwen", icon: "🚀", color: "#7c3aed", free: true, desc: "MoE, 235B params" },
             { id: "qwen/qwen2.5-72b-instruct", name: "Qwen 2.5 72B", provider: "qwen", icon: "🌟", color: "#7c3aed", free: true, desc: "128K context, 8K output" },
             { id: "qwen/qwen2.5-32b-instruct", name: "Qwen 2.5 32B", provider: "qwen", icon: "⭐", color: "#7c3aed", free: true, desc: "Equilibrado" },
             { id: "qwen/qwen2.5-14b-instruct", name: "Qwen 2.5 14B", provider: "qwen", icon: "✨", color: "#7c3aed", free: true, desc: "Rapido" },
             { id: "qwen/qwen2.5-7b-instruct", name: "Qwen 2.5 7B", provider: "qwen", icon: "💫", color: "#7c3aed", free: true, desc: "Muito leve" },
             { id: "qwen/qwen2.5-coder-32b-instruct", name: "Qwen 2.5 Coder 32B", provider: "qwen", icon: "💻", color: "#7c3aed", free: true, desc: "Especializado em codigo" },
-            { id: "qwen/qwen3-235b-a22b", name: "Qwen 3 235B", provider: "qwen", icon: "🚀", color: "#7c3aed", free: true, desc: "MoE, 235B params" },
-            // MiniMax
             { id: "minimax/minimax-m2.7", name: "MiniMax M2.7", provider: "minimax", icon: "📐", color: "#6366f1", free: true, desc: "Raciocinio, 230B params" },
             { id: "minimax/minimax-m2.5", name: "MiniMax M2.5", provider: "minimax", icon: "📐", color: "#6366f1", free: true, desc: "Coding, office tasks" },
-            // Moonshot (Kimi)
             { id: "moonshotai/kimi-k2.5", name: "Kimi K2.5", provider: "moonshotai", icon: "🌙", color: "#10b981", free: true, desc: "1T MoE, 200K context, multimodal" },
             { id: "moonshotai/kimi-k2", name: "Kimi K2", provider: "moonshotai", icon: "🌕", color: "#10b981", free: true, desc: "Long context, documentos" },
-            // Zhipu (GLM)
             { id: "zhipuai/glm-5", name: "GLM 5", provider: "zhipuai", icon: "🔺", color: "#dc2626", free: true, desc: "744B MoE, raciocinio complexo" },
             { id: "zhipuai/glm-5.1", name: "GLM 5.1", provider: "zhipuai", icon: "🔺", color: "#dc2626", free: true, desc: "Agentic workflows" },
             { id: "zhipuai/glm-4.7", name: "GLM 4.7", provider: "zhipuai", icon: "🔺", color: "#dc2626", free: true, desc: "Multilingual coding" },
-            // StepFun
             { id: "stepfun-ai/step-3.7-flash", name: "Step 3.7 Flash", provider: "stepfun", icon: "⚡", color: "#f59e0b", free: true, desc: "Agentes, rapido" },
-            // OpenAI OSS
             { id: "openai/gpt-oss-120b", name: "GPT-OSS 120B", provider: "openai", icon: "🤖", color: "#10a37f", free: true, desc: "Open source da OpenAI" },
-            // Sarvam
             { id: "sarvam/sarvam-m", name: "Sarvam M", provider: "sarvam", icon: "🇮🇳", color: "#ff9933", free: true, desc: "Indic languages" },
-            // Other
             { id: "01-ai/yi-large", name: "Yi Large", provider: "01ai", icon: "🌑", color: "#1a56db", free: true, desc: "01.AI flagship" },
             { id: "nousresearch/hermes-3-llama-3.1-405b", name: "Hermes 3 405B", provider: "nous", icon: "🏛️", color: "#f59e0b", free: true, desc: "Nous Research, fine-tuned" },
         ];
@@ -598,7 +619,12 @@
             { id: "x-ai/grok-2-mini", name: "Grok 2 Mini", provider: "xai", icon: "⚡", color: "#000000", free: false, desc: "xAI leve" },
             { id: "cohere/command-r-plus", name: "Command R+", provider: "cohere", icon: "📚", color: "#d6a45d", free: false, desc: "Cohere" },
             { id: "cohere/command-r", name: "Command R", provider: "cohere", icon: "📖", color: "#d6a45d", free: false, desc: "Cohere" },
-            // OpenRouter Free models
+            { id: "nvidia/llama-3.1-nemotron-70b-instruct", name: "Nemotron 70B (OR)", provider: "nvidia", icon: "🟢", color: "#76b900", free: false, desc: "NVIDIA via OpenRouter" },
+            { id: "nvidia/llama-3.1-nemotron-51b-instruct", name: "Nemotron 51B (OR)", provider: "nvidia", icon: "🟢", color: "#76b900", free: false, desc: "NVIDIA via OpenRouter" },
+            { id: "perplexity/llama-3.1-sonar-large-128k-online", name: "Sonar Large Online", provider: "perplexity", icon: "🔍", color: "#1db954", free: false, desc: "Com busca web" },
+            { id: "perplexity/llama-3.1-sonar-small-128k-online", name: "Sonar Small Online", provider: "perplexity", icon: "🔎", color: "#1db954", free: false, desc: "Com busca web" },
+            { id: "nousresearch/hermes-3-llama-3.1-405b", name: "Hermes 3 405B", provider: "nous", icon: "🏛️", color: "#f59e0b", free: false, desc: "Nous Research" },
+            { id: "01-ai/yi-large", name: "Yi Large", provider: "01ai", icon: "🌑", color: "#1a56db", free: false, desc: "01.AI" },
             { id: "meta-llama/llama-3.2-3b-instruct:free", name: "Llama 3.2 3B (Free)", provider: "meta", icon: "🆓", color: "#0668e1", free: true, desc: "Limitado: 20 RPM, 50 RPD" },
             { id: "google/gemini-1.5-flash-8b:free", name: "Gemini 1.5 Flash 8B (Free)", provider: "google", icon: "🆓", color: "#4285f4", free: true, desc: "Limitado: 20 RPM, 50 RPD" },
             { id: "deepseek/deepseek-chat:free", name: "DeepSeek Chat (Free)", provider: "deepseek", icon: "🆓", color: "#4f46e5", free: true, desc: "Limitado: 20 RPM, 50 RPD" },
@@ -623,6 +649,7 @@
 
         var config = {
             nvidia: '',
+            nvidiaProxy: '',
             openrouter: '',
             userName: 'Christian',
             theme: 'light',
@@ -630,7 +657,6 @@
             appName: 'ChatGPT Clone'
         };
 
-        // ========== DOM REFERENCES ==========
         var $ = function(id) { return document.getElementById(id); };
 
         // ========== INIT ==========
@@ -694,11 +720,12 @@
 
         // ========== CONFIG ==========
         function loadConfig() {
-            var saved = localStorage.getItem('chatConfigV2');
+            var saved = localStorage.getItem('chatConfigV4');
             if (saved) {
                 try {
                     var parsed = JSON.parse(saved);
                     config.nvidia = parsed.nvidia || '';
+                    config.nvidiaProxy = parsed.nvidiaProxy || '';
                     config.openrouter = parsed.openrouter || '';
                     config.userName = parsed.userName || 'Christian';
                     config.theme = parsed.theme || 'light';
@@ -706,6 +733,7 @@
                     config.appName = parsed.appName || '';
 
                     $('apiKeyNvidia').value = config.nvidia;
+                    $('nvidiaProxyUrl').value = config.nvidiaProxy;
                     $('apiKeyOpenRouter').value = config.openrouter;
                     $('userNameInput').value = config.userName;
                     $('siteUrl').value = config.siteUrl;
@@ -721,12 +749,13 @@
 
         function saveSettings() {
             config.nvidia = $('apiKeyNvidia').value.trim();
+            config.nvidiaProxy = $('nvidiaProxyUrl').value.trim();
             config.openrouter = $('apiKeyOpenRouter').value.trim();
             config.userName = $('userNameInput').value.trim() || 'Christian';
             config.siteUrl = $('siteUrl').value.trim();
             config.appName = $('appName').value.trim() || 'ChatGPT Clone';
 
-            localStorage.setItem('chatConfigV2', JSON.stringify(config));
+            localStorage.setItem('chatConfigV4', JSON.stringify(config));
             updateUI();
             closeSettings();
             showToast('Configuracoes salvas!');
@@ -740,7 +769,7 @@
             $('currentModel').textContent = currentModel.name;
             $('providerBadge').textContent = currentProvider === 'nvidia' ? 'NVIDIA' : 'OpenRouter';
             $('providerBadge').className = 'provider-badge ' + (currentProvider === 'nvidia' ? 'nvidia' : 'openrouter');
-            $('footerProvider').textContent = currentProvider === 'nvidia' ? 'NVIDIA NIM (Gratuito)' : 'OpenRouter';
+            $('footerProvider').textContent = currentProvider === 'nvidia' ? 'NVIDIA NIM (via Proxy)' : 'OpenRouter';
         }
 
         // ========== PROVIDER SWITCHING ==========
@@ -758,14 +787,62 @@
             updateUI();
             renderModelList();
             $('modelSearch').value = '';
+            checkApiStatus();
         }
 
         // ========== MODELS ==========
         function refreshModels() {
             if (currentProvider === 'nvidia') {
-                showToast('NVIDIA: Usando catalogo offline (100+ modelos verificados)');
+                if (!config.nvidiaProxy) {
+                    showToast('Configure a URL do Proxy NVIDIA primeiro!', true);
+                    openSettings();
+                    return;
+                }
+                showToast('Buscando modelos do NVIDIA via proxy...');
+                fetch(config.nvidiaProxy + '/v1/models', {
+                    headers: { 'X-NVIDIA-API-Key': config.nvidia }
+                })
+                .then(function(response) {
+                    if (!response.ok) throw new Error('Falha ao buscar modelos');
+                    return response.json();
+                })
+                .then(function(data) {
+                    var apiModels = data.data || [];
+                    var merged = [];
+                    var seen = {};
+
+                    apiModels.forEach(function(m) {
+                        var provider = m.id.split('/')[0] || 'unknown';
+                        merged.push({
+                            id: m.id,
+                            name: m.name || m.id,
+                            provider: provider,
+                            icon: getProviderIcon(provider),
+                            color: getProviderColor(provider),
+                            free: true,
+                            desc: m.description || 'Via NVIDIA NIM'
+                        });
+                        seen[m.id] = true;
+                    });
+
+                    NVIDIA_MODELS.forEach(function(m) {
+                        if (!seen[m.id]) {
+                            merged.push(m);
+                        }
+                    });
+
+                    allNvidiaModels = merged;
+                    if (currentProvider === 'nvidia') {
+                        renderModelList();
+                    }
+                    showToast(allNvidiaModels.length + ' modelos NVIDIA carregados!');
+                })
+                .catch(function(error) {
+                    showToast('Usando lista offline NVIDIA (' + allNvidiaModels.length + ')', true);
+                });
                 return;
             }
+
             showToast('Buscando modelos do OpenRouter...');
             fetch('https://openrouter.ai/api/v1/models')
                 .then(function(response) {
@@ -862,7 +939,7 @@
                         '<div class="model-details">' +
                             '<div class="model-name-row">' +
                                 '<div class="model-name">' + m.name + '</div>' +
-                                (m.free ? '<span class="free-badge">GRATIS</span>' : '') +
+                                (m.free ? '<span class="free-badge">GRATIS</span>' : '<span class="or-badge">OR</span>') +
                             '</div>' +
                             '<div class="model-desc">' + (m.desc || m.id) + '</div>' +
                         '</div>' +
@@ -905,7 +982,7 @@
                         '<div class="model-details">' +
                             '<div class="model-name-row">' +
                                 '<div class="model-name">' + m.name + '</div>' +
-                                (m.free ? '<span class="free-badge">GRATIS</span>' : '') +
+                                (m.free ? '<span class="free-badge">GRATIS</span>' : '<span class="or-badge">OR</span>') +
                             '</div>' +
                             '<div class="model-desc">' + (m.desc || m.id) + '</div>' +
                         '</div>' +
@@ -978,12 +1055,23 @@
             var text = input.value.trim();
             if (!text || isTyping) return;
 
-            var apiKey = currentProvider === 'nvidia' ? config.nvidia : config.openrouter;
-            if (!apiKey) {
-                var providerName = currentProvider === 'nvidia' ? 'NVIDIA' : 'OpenRouter';
-                showToast('Configure sua API Key da ' + providerName + ' primeiro!', true);
-                openSettings();
-                return;
+            if (currentProvider === 'nvidia') {
+                if (!config.nvidiaProxy) {
+                    showToast('Configure a URL do Proxy NVIDIA primeiro!', true);
+                    openSettings();
+                    return;
+                }
+                if (!config.nvidia) {
+                    showToast('Configure a API Key da NVIDIA primeiro!', true);
+                    openSettings();
+                    return;
+                }
+            } else {
+                if (!config.openrouter) {
+                    showToast('Configure a API Key do OpenRouter primeiro!', true);
+                    openSettings();
+                    return;
+                }
             }
 
             $('welcomeScreen').style.display = 'none';
@@ -999,7 +1087,7 @@
             showTyping();
             isTyping = true;
 
-            var promise = currentProvider === 'nvidia' ? callNvidia() : callOpenRouter();
+            var promise = currentProvider === 'nvidia' ? callNvidiaViaProxy() : callOpenRouter();
             promise
                 .then(function(response) {
                     removeTyping();
@@ -1016,15 +1104,15 @@
                 });
         }
 
-        function callNvidia() {
+        function callNvidiaViaProxy() {
             var headers = {
-                'Authorization': 'Bearer ' + config.nvidia,
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'X-NVIDIA-API-Key': config.nvidia
             };
             if (config.siteUrl) headers['HTTP-Referer'] = config.siteUrl;
             if (config.appName) headers['X-Title'] = config.appName;
 
-            return fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+            return fetch(config.nvidiaProxy + '/v1/chat/completions', {
                 method: 'POST',
                 headers: headers,
                 body: JSON.stringify({
@@ -1127,10 +1215,18 @@
                     return '🔧 **NVIDIA DGX Cloud sobrecarregado**\n\n' +
                         'Tente novamente em alguns instantes ou use outro modelo.';
                 }
+                if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('CORS')) {
+                    return '❌ **Erro de conexao com o Proxy**\n\n' +
+                        'Verifique se a URL do proxy esta correta e acessivel.\n\n' +
+                        'URL configurada: `' + config.nvidiaProxy + '`\n\n' +
+                        '**Dicas:**\n' +
+                        '- Verifique se o proxy esta rodando\n' +
+                        '- Confira a URL nas configuracoes\n' +
+                        '- Tente usar OpenRouter enquanto isso';
+                }
                 return '❌ **Erro NVIDIA** (' + status + ')\n\n' + msg;
             }
 
-            // OpenRouter errors
             if (status === 402 || msg.includes('402') || msg.includes('credits')) {
                 return '❌ **Sem creditos no OpenRouter**\n\n' +
                     'Adicione creditos em [openrouter.ai/credits](https://openrouter.ai/credits) ou use um modelo **Free** (com 🆓).\n\n' +
@@ -1215,7 +1311,7 @@
             var next = current === 'dark' ? 'light' : 'dark';
             document.body.setAttribute('data-theme', next);
             config.theme = next;
-            localStorage.setItem('chatConfigV2', JSON.stringify(config));
+            localStorage.setItem('chatConfigV4', JSON.stringify(config));
             $('themeIcon').textContent = next === 'dark' ? '☀️' : '🌙';
         }
 
@@ -1246,7 +1342,7 @@
         }
 
         function checkApiStatus() {
-            var nvidiaOk = !!config.nvidia;
+            var nvidiaOk = !!config.nvidia && !!config.nvidiaProxy;
             var orOk = !!config.openrouter;
             var dot = $('apiStatusDot');
             var text = $('apiStatusText');
@@ -1257,7 +1353,7 @@
                     text.textContent = 'NVIDIA OK';
                 } else {
                     dot.className = 'api-status-dot offline';
-                    text.textContent = 'NVIDIA: Sem Key';
+                    text.textContent = 'NVIDIA: Falta Proxy/Key';
                 }
             } else {
                 if (orOk) {
